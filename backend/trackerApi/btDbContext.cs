@@ -1,17 +1,23 @@
+namespace trackerApi.DbContext;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 
-public class AppDbContext : DbContext 
+public class AppDbContext : DbContext
 {
-    protectedoverridevoidOnConfiguring(DbContextOptionsBuilder optionsBuilder) 
-    {
-        optionsBuilder.UseNpgsql("Host=localhost;Database=myappdb;Username=admin;Password=password");
-    }
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
 
-    public DbSet<User> Users { get; set; }
+    public DbSet<Models.TrackingLogItem> TrackingLogs { get; set; }
+}
 
-    public classUser
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
+        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BETrackingDb;Username=postgres;Password=yourpassword");
+
+        return new AppDbContext(optionsBuilder.Options);
     }
 }
