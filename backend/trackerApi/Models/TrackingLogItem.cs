@@ -1,10 +1,15 @@
-﻿namespace trackerApi.Models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
+namespace trackerApi.Models;
 
 public class TrackingLogItem
 {
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid Id { get; set; }
 
+    [Required]
     public DateTime EventDate { get; set; } = DateTime.Now;
 
     public bool Accident { get; set; } = false;
