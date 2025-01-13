@@ -6,11 +6,12 @@ import { ReactiveFormsModule } from '@angular/forms';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [],
+  imports: [ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
+
   loginForm: FormGroup;
 
   constructor(private fb: FormBuilder) {
@@ -25,7 +26,23 @@ export class LoginComponent {
     });
   }
 
-  onSubmit() {
+  isUsernameDirtyAndHasErrors(): boolean {
+    const usernameControl = this.loginForm.get('username');
+    return usernameControl?.errors != null && usernameControl?.dirty;
+  }
+
+  isUsernameRequired(): boolean {
+    const usernameControl = this.loginForm.get('username');
+    return usernameControl?.errors != null && usernameControl?.hasError('required');
+  }
+
+  // @if (loginForm.get('password').errors && loginForm.get('password').dirty) {
+  isPasswordDirtyAndHasErrors(): boolean {
+    const passwordControl = this.loginForm.get('password');
+    return passwordControl?.errors != null && passwordControl?.dirty;
+  }
+
+  onSubmit(): void {
     // Access the form values
     const loginData = this.loginForm.value;
 

@@ -1,17 +1,23 @@
 <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-    <div class="form-group">
-        <label for="username">Username:</label>
-        <input type="text" class="form-control" formControlName="username">
-        <div class="error" @if="loginForm.get('username').errors && loginForm.get('username').dirty">
-            <p @if="loginForm.get('username').hasError('required')">Username is required</p>
-        </div>
+  <div class="form-group">
+    <label for="username">Username:</label>
+    <input type="text" class="form-control" formControlName="username">
+    @if (isUsernameDirtyAndHasErrors()) {
+    <div class="error">
+      @if (isUsernameRequired()) {
+        <p>Username is required</p>
+      }
     </div>
-    <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" class="form-control" formControlName="password">
-        <div class="error" @if="loginForm.get('password').errors && loginForm.get('password').dirty">
-            <p @if="loginForm.get('password').hasError('required')">Password is required</p>
-        </div>
-    </div>
-    <button type="submit" [disabled]="!loginForm.valid">Login</button>
+    }
+  </div>
+  <div class="form-group">
+    <label for="password">Password:</label>
+    <input type="password" class="form-control" formControlName="password">
+    @if (isPasswordDirtyAndHasErrors()) {
+      <div class="error">
+        <p>Password is required</p>
+      </div>
+    }
+  </div>
+  <button type="submit" [disabled]="!loginForm.valid">Login</button>
 </form>

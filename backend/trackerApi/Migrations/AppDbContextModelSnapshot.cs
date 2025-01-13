@@ -17,7 +17,6 @@ namespace trackerApi.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("Postgres:Triggers", "\r\n            CREATE OR REPLACE FUNCTION update_updated_at_column()\r\n            RETURNS TRIGGER AS $$\r\n            BEGIN\r\n                NEW.\"UpdatedAt\" = CURRENT_TIMESTAMP;\r\n                RETURN NEW;\r\n            END;\r\n            $$ LANGUAGE plpgsql;\r\n\r\n            CREATE TRIGGER set_updated_at\r\n            BEFORE UPDATE ON \"Users\"\r\n            FOR EACH ROW\r\n            EXECUTE FUNCTION update_updated_at_column();")
                 .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -62,7 +61,8 @@ namespace trackerApi.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

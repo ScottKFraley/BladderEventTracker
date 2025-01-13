@@ -36,7 +36,7 @@ public class AppDbContext : DbContext
 
             // Configure Id as an auto-incrementing identity column
             entity.Property(e => e.Id)
-                .ValueGeneratedOnAdd();     // PostgreSQL-specific for GENERATED AS IDENTITY
+                .HasDefaultValueSql("gen_random_uuid()");
 
             // Configure default values for timestamps
             entity.Property(e => e.CreatedAt)
@@ -47,27 +47,27 @@ public class AppDbContext : DbContext
                 .ValueGeneratedOnUpdate(); // Update on row modification (if supported)
         });
 
-        // Call helper to configure triggers
-        ConfigureTriggers(modelBuilder);
+        // Call helper to configure triggers ~ Amazon Q says I don't need this.
+        //ConfigureTriggers(modelBuilder);
     }
 
-    private void ConfigureTriggers(ModelBuilder modelBuilder)
-    {
-        modelBuilder.HasAnnotation("Postgres:Triggers", @"
-            CREATE OR REPLACE FUNCTION update_updated_at_column()
-            RETURNS TRIGGER AS $$
-            BEGIN
-                NEW.""UpdatedAt"" = CURRENT_TIMESTAMP;
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
+    //private void ConfigureTriggers(ModelBuilder modelBuilder)
+    //{
+    //    modelBuilder.HasAnnotation("Postgres:Triggers", @"
+    //        CREATE OR REPLACE FUNCTION update_updated_at_column()
+    //        RETURNS TRIGGER AS $$
+    //        BEGIN
+    //            NEW.""UpdatedAt"" = CURRENT_TIMESTAMP;
+    //            RETURN NEW;
+    //        END;
+    //        $$ LANGUAGE plpgsql;
 
-            CREATE TRIGGER set_updated_at
-            BEFORE UPDATE ON ""Users""
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();"
-        );
-    }
+    //        CREATE TRIGGER set_updated_at
+    //        BEFORE UPDATE ON ""Users""
+    //        FOR EACH ROW
+    //        EXECUTE FUNCTION update_updated_at_column();"
+    //    );
+    //}
 }
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
