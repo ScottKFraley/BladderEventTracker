@@ -21,3 +21,8 @@ public class User
     [Required]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>
+/// A login DTO. May want, if not need to change this to a User instance.
+/// </summary>
+public record LoginDto(string Username, string Password);
