@@ -56,6 +56,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Register the DI stuff
 // 
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 
 builder.Services.AddCors(options =>
