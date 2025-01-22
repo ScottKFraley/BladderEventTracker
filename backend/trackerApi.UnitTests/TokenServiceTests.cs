@@ -139,7 +139,7 @@ public class TokenServiceTests
     {
         // Arrange
         var emptyConfig = new ConfigurationBuilder()
-            .AddInMemoryCollection(Array.Empty<KeyValuePair<string, string?>>())
+            .AddInMemoryCollection([])
             .Build();
 
         var tokenService = new TokenService(emptyConfig);

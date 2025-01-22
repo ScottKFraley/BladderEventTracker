@@ -41,7 +41,9 @@ public class TokenService : ITokenService
             // Claims for refresh token
             claims.Add(new Claim(ClaimTypes.Name, username));
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
-            claims.Add(new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()));
+            claims.Add(new Claim(JwtRegisteredClaimNames.Iat,
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64));
         }
         else
         {

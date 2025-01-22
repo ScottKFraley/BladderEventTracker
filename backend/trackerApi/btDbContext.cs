@@ -26,8 +26,41 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // TrackingLog table
-        modelBuilder.Entity<TrackingLogItem>()
-            .ToTable("TrackingLog");
+        modelBuilder.Entity<TrackingLogItem>(entity =>
+        {
+            entity.ToTable("TrackingLog");  // Your existing table name configuration
+
+            // Configure Id as UUID
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            // Configure EventDate with default
+            entity.Property(e => e.EventDate)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Configure boolean defaults
+            entity.Property(e => e.Accident)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.ChangePadOrUnderware)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.AwokeFromSleep)
+                .HasDefaultValue(false);
+
+            // Configure numeric fields with defaults and constraints
+            entity.Property(e => e.LeakAmount)
+                .HasDefaultValue(1)
+                .HasAnnotation("CheckConstraint", "LeakAmount >= 0 AND LeakAmount <= 3");
+
+            entity.Property(e => e.Urgency)
+                .HasDefaultValue(1)
+                .HasAnnotation("CheckConstraint", "Urgency >= 0 AND Urgency <= 4");
+
+            entity.Property(e => e.PainLevel)
+                .HasDefaultValue(1)
+                .HasAnnotation("CheckConstraint", "PainLevel >= 0 AND PainLevel <= 10");
+        });
 
         // Users table
         modelBuilder.Entity<User>(entity =>
@@ -46,28 +79,7 @@ public class AppDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnUpdate(); // Update on row modification (if supported)
         });
-
-        // Call helper to configure triggers ~ Amazon Q says I don't need this.
-        //ConfigureTriggers(modelBuilder);
     }
-
-    //private void ConfigureTriggers(ModelBuilder modelBuilder)
-    //{
-    //    modelBuilder.HasAnnotation("Postgres:Triggers", @"
-    //        CREATE OR REPLACE FUNCTION update_updated_at_column()
-    //        RETURNS TRIGGER AS $$
-    //        BEGIN
-    //            NEW.""UpdatedAt"" = CURRENT_TIMESTAMP;
-    //            RETURN NEW;
-    //        END;
-    //        $$ LANGUAGE plpgsql;
-
-    //        CREATE TRIGGER set_updated_at
-    //        BEFORE UPDATE ON ""Users""
-    //        FOR EACH ROW
-    //        EXECUTE FUNCTION update_updated_at_column();"
-    //    );
-    //}
 }
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
