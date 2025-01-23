@@ -70,7 +70,12 @@ namespace trackerApi.Migrations
                         .HasDefaultValue(1)
                         .HasAnnotation("CheckConstraint", "Urgency >= 0 AND Urgency <= 4");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("TrackingLog", (string)null);
                 });
@@ -104,6 +109,22 @@ namespace trackerApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("trackerApi.Models.TrackingLogItem", b =>
+                {
+                    b.HasOne("trackerApi.Models.User", "User")
+                        .WithMany("TrackingLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("trackerApi.Models.User", b =>
+                {
+                    b.Navigation("TrackingLogs");
                 });
 #pragma warning restore 612, 618
         }

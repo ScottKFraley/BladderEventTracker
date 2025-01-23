@@ -21,7 +21,12 @@ public static class TrackerEndpoints
                 "/",
                 async (AppDbContext context) =>
                 {
-                    var trackedEvents = await context.TrackingLogs.ToListAsync();
+                    var twoDaysAgo = DateTime.UtcNow.AddDays(-2);
+
+                    var trackedEvents = await context.TrackingLogs
+                        .Where(e => e.EventDate >= twoDaysAgo)
+                        .OrderByDescending(e => e.EventDate)
+                        .ToListAsync();
 
                     return trackedEvents;
                 }
@@ -29,14 +34,11 @@ public static class TrackerEndpoints
             .WithName("GetTrackedEntry")
             .WithOpenApi()                      // do I want/need this, if I have the below?
             .Produces<TrackingLogItem>(200)     // Document response types
-            .Produces(404);
-
+            .Produces(404)
+            .RequireAuthorization();
 
         // ... other user-related endpoints
-
     }
-
-
 
 }
 

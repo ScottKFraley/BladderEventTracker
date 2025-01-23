@@ -5,9 +5,15 @@ namespace trackerApi.Models;
 
 public class User
 {
+    /// <summary>
+    /// The row Id.
+    /// </summary>
+    /// <remarks>
+    /// The database is set up to auto-gen a new rowId.
+    /// </remarks>
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid(); // Generate Guid in .NET if not provided
-
+    public Guid Id { get; set; }
+    
     [Required]
     [MaxLength(50)]
     public required string Username { get; set; }
@@ -20,6 +26,12 @@ public class User
 
     [Required]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// For navigation.
+    /// </summary>
+    public ICollection<TrackingLogItem>? TrackingLogs { get; set; }
+
 }
 
 /// <summary>

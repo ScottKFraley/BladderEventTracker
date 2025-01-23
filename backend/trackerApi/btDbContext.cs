@@ -34,6 +34,12 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()");
 
+            // Configure foreign key relationship
+            entity.HasOne(t => t.User)
+                .WithMany(u => u.TrackingLogs)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);  // or DeleteBehavior.Restrict if you don't want automatic deletion
+
             // Configure EventDate with default
             entity.Property(e => e.EventDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");

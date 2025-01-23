@@ -89,28 +89,4 @@ public static class AuthenticationEndpoints
 
         return Results.Ok(new { token });
     }
-
-    //private static string GenerateJwtToken(User user, IConfiguration config)
-    //{
-    //    var jwtSettings = config.GetSection("JwtSettings");
-    //    var key = new SymmetricSecurityKey(
-    //        Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
-    //    var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-    //    var claims = new[] {
-    //        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-    //        new Claim(ClaimTypes.Name, user.Username)
-    //    };
-
-    //    var token = new JwtSecurityToken(
-    //                issuer: jwtSettings["Issuer"],
-    //                audience: jwtSettings["Audience"],
-    //                claims: claims,
-    //                expires: DateTime.Now.AddMinutes(
-    //                    double.Parse(jwtSettings["ExpirationInMinutes"] ?? "60")),
-    //                signingCredentials: credentials
-    //            );
-
-    //    return new JwtSecurityTokenHandler().WriteToken(token);
-    //}
 }
