@@ -54,6 +54,9 @@ bin/
 **/coverage.xml
 **/bin/*
 
+# Environment file(s) that should NOT be checked in.
+.env 
+
 # IDE specific files
 .idea/
 *.suo

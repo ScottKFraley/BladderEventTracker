@@ -1,0 +1,17 @@
+﻿# For PostgreSQL test container, create a Docker compose file for testing:
+# docker-compose.test.yml
+
+services:
+  db_test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: BETrackingDb_Test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"  # Note: Different port from dev
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+
+volumes:
+  pgdata_test:

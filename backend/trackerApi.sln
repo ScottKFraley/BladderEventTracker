@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trackerApi", "trackerApi\tr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trackerApi.UnitTests", "trackerApi.UnitTests\trackerApi.UnitTests.csproj", "{57387EE2-FE0F-4AFA-A243-9BC60C19D8BF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trackerApi.IntegrationTests", "trackerApi.IntegrationTests\trackerApi.IntegrationTests.csproj", "{87853351-8BA0-437B-90C2-48A35B962928}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{57387EE2-FE0F-4AFA-A243-9BC60C19D8BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{57387EE2-FE0F-4AFA-A243-9BC60C19D8BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{57387EE2-FE0F-4AFA-A243-9BC60C19D8BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87853351-8BA0-437B-90C2-48A35B962928}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87853351-8BA0-437B-90C2-48A35B962928}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87853351-8BA0-437B-90C2-48A35B962928}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87853351-8BA0-437B-90C2-48A35B962928}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

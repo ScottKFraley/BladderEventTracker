@@ -92,12 +92,28 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        // Build configuration
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json")
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddUserSecrets<AppDbContextFactory>()
+            .Build();
+
+        // Get the base connection string
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        // Get the password from secrets
+        var dbPassword = configuration["DbPassword"];
+        // Replace the placeholder with actual password
+        connectionString = connectionString!.Replace("${DbPassword}", dbPassword);
+
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=BETrackingDb;Username=postgres;Password=yourpassword");
+        optionsBuilder.UseNpgsql(connectionString);
 
         return new AppDbContext(optionsBuilder.Options);
     }
 }
+
 
 public partial class UpdatedUsersTable : Migration
 {
