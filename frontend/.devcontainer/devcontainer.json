@@ -1,5 +1,3 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
 	"name": "Node.js, TypeScript & Angular",
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
@@ -27,9 +25,12 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
+				"amazonwebservices.amazon-q-vscode",
 				"angular.ng-template",
 				"dbaeumer.vscode-eslint",
-				"esbenp.prettier-vscode"
+				"esbenp.prettier-vscode",
+				"ms-azuretools.vscode-docker",
+				"ms-vscode.azurecli"
 			]
 		}
 	},

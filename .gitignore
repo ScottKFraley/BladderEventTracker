@@ -60,7 +60,11 @@ Thumbs.db
 *.pdb
 *.xml
 *.manifest
+
+# Ignore configs but not Postman files
 *.config
+!*.postman*.json
+
 *.deploy
 *.nupkg
 *.symbols
