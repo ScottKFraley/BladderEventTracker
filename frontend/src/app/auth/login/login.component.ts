@@ -1,30 +1,38 @@
-import { Component, OnInit } from '@angular/core';
-import { FormGroup, FormControl, Validators, FormBuilder } from '@angular/forms';
-import { ReactiveFormsModule } from '@angular/forms';
-
+// login.component.ts
+import { Component } from '@angular/core';
+import { FormGroup, FormControl, Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../auth.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-
   loginForm: FormGroup;
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {
     this.loginForm = this.fb.group({
-      username: new FormControl('',
-        [Validators.required,
+      username: new FormControl('', [
+        Validators.required,
         Validators.minLength(3),
         Validators.maxLength(50),
-          //Validators.pattern('^[a-zA-Z0-9]+$')
-        ]),
+      ]),
       password: new FormControl('', [Validators.required])
     });
   }
+
+  // Validation methods
 
   isUsernameDirtyAndHasErrors(): boolean {
     const usernameControl = this.loginForm.get('username');
@@ -43,11 +51,23 @@ export class LoginComponent {
   }
 
   onSubmit(): void {
-    // Access the form values
-    const loginData = this.loginForm.value;
+    if (this.loginForm.valid) {
+      this.isLoading = true;
+      this.errorMessage = '';
 
-    // Send login data to your backend API
-    // ... 
+      this.authService.login(this.loginForm.value).subscribe({
+        next: () => {
+          this.router.navigate(['/dashboard']); // or your desired route
+        },
+        error: (error: string) => {
+          this.errorMessage = error;
+          this.isLoading = false;
+        },
+        complete: () => {
+          this.isLoading = false;
+        }
+      });
+    }
   }
-
 }
+

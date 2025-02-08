@@ -61,7 +61,7 @@ Thumbs.db
 *.xml
 *.manifest
 
-# Ignore configs but not Postman files
+# Ignore configs but not Postman [backup] files
 *.config
 !*.postman*.json
 

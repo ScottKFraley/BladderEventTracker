@@ -1,11 +1,17 @@
 <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+  @if (errorMessage) {
+  <div class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+  }
+
   <div class="form-group">
     <label for="username">Username:</label>
     <input type="text" class="form-control" formControlName="username">
     @if (isUsernameDirtyAndHasErrors()) {
     <div class="error">
       @if (isUsernameRequired()) {
-        <p>Username is required</p>
+      <p>Username is required</p>
       }
     </div>
     }
@@ -14,10 +20,19 @@
     <label for="password">Password:</label>
     <input type="password" class="form-control" formControlName="password">
     @if (isPasswordDirtyAndHasErrors()) {
-      <div class="error">
-        <p>Password is required</p>
-      </div>
+    <div class="error">
+      <p>Password is required</p>
+    </div>
     }
   </div>
-  <button type="submit" [disabled]="!loginForm.valid">Login</button>
+
+  <!-- <button type="submit" [disabled]="!loginForm.valid">Login</button> -->
+  <button type="submit" [disabled]="!loginForm.valid || isLoading" class="btn btn-primary">
+    @if (isLoading) {
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Loading...
+    } @else {
+    Login
+    }
+  </button>
 </form>
