@@ -21,6 +21,9 @@
 	"forwardPorts": [
 		4200
 	],
+	"appPort": [
+		"4200:4200"
+	],
 	"postCreateCommand": "npm install -g @angular/cli && npm install",
 	"customizations": {
 		"vscode": {

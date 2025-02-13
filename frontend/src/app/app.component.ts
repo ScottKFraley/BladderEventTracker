@@ -8,15 +8,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
   imports: [
     NgbModule,
     RouterOutlet],
-  template: `
-    <h1>Welcome to {{title}}!</h1>
-
-    <p>
-      app.component.ts file. NEED TO FIX obviously!
-    </p>
-
-    <router-outlet />
-  `,
+  templateUrl: 'app.component.html',
   styles: [],
 })
 export class AppComponent {
