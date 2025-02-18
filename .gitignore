@@ -6,10 +6,19 @@
 /out-tsc
 /bazel-out
 
+# specific alpha version stuff
+database/backup.sql
+
 # Node
 /node_modules
 npm-debug.log
 yarn-error.log
+
+# Environment files
+.env
+./backend/trackerApi/.env
+!.env.example
+!./backend/trackerApi/.env
 
 # IDEs and editors
 .idea/

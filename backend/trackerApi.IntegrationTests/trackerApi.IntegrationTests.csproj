@@ -27,12 +27,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="appsettings.Testing.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
 		<Using Include="Xunit" />
 	</ItemGroup>
 

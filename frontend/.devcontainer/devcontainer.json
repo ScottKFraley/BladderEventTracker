@@ -1,41 +1,38 @@
 {
-	"name": "Node.js, TypeScript & Angular",
-	"image": "mcr.microsoft.com/devcontainers/javascript-node:18", // or :20 for Node.js 20
-	"features": {
-		"ghcr.io/devcontainers/features/azure-cli:1": {
-			"installBicep": true,
-			"version": "latest"
-		},
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"azureDnsAutoDetection": true,
-			"installDockerBuildx": true,
-			"installDockerComposeSwitch": true,
-			"version": "latest",
-			"dockerDashComposeVersion": "latest"
-		},
-		"ghcr.io/devcontainers/features/github-cli:1": {
-			"installDirectlyFromGitHubRelease": true,
-			"version": "latest"
-		}
-	},
-	"forwardPorts": [
-		4200
-	],
-	"appPort": [
-		"4200:4200"
-	],
-	"postCreateCommand": "npm install -g @angular/cli && npm install",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"amazonwebservices.amazon-q-vscode",
-				"angular.ng-template",
-				"dbaeumer.vscode-eslint",
-				"esbenp.prettier-vscode",
-				"ms-azuretools.vscode-docker",
-				"ms-vscode.azurecli"
-			]
-		}
-	},
-	"remoteUser": "node"
+    "name": "Node.js, TypeScript & Angular",
+    "dockerComposeFile": ["../../docker-compose.yml"],
+    "service": "backend",
+    "workspaceFolder": "/workspace/frontend",
+    "features": {
+        "ghcr.io/devcontainers/features/azure-cli:1": {
+            "installBicep": true,
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "azureDnsAutoDetection": true,
+            "installDockerBuildx": true,
+            "installDockerComposeSwitch": true,
+            "version": "latest",
+            "dockerDashComposeVersion": "latest"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {
+            "installDirectlyFromGitHubRelease": true,
+            "version": "latest"
+        }
+    },
+    "forwardPorts": [4200],
+    "postCreateCommand": "npm install @angular/cli && npm install",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "amazonwebservices.amazon-q-vscode",
+                "angular.ng-template",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "ms-azuretools.vscode-docker",
+                "ms-vscode.azurecli"
+            ]
+        }
+    },
+    "remoteUser": "node"
 }

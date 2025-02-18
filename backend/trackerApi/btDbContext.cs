@@ -90,13 +90,20 @@ public class AppDbContext : DbContext
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
+    private readonly IConfiguration? _configuration;
+
+    public AppDbContextFactory(IConfiguration? configuration = null)
+    {
+        _configuration = configuration;
+    }
+
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Build configuration
-        IConfigurationRoot configuration = new ConfigurationBuilder()
+        // Use provided configuration if available, otherwise build a new one
+        IConfiguration configuration = _configuration ?? new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json")
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
             .AddUserSecrets<AppDbContextFactory>()
             .Build();
 
@@ -105,15 +112,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         // Get the password from secrets
         var dbPassword = configuration["DbPassword"];
         // Replace the placeholder with actual password
-        connectionString = connectionString!.Replace("${DbPassword}", dbPassword);
+        connectionString = connectionString!.Replace("${DbPassword}", dbPassword ?? "test-password");
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
-
         return new AppDbContext(optionsBuilder.Options);
     }
 }
-
 
 public partial class UpdatedUsersTable : Migration
 {

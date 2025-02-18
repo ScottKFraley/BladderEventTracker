@@ -4,6 +4,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
+
 
 export interface LoginDto {
   username: string;
@@ -32,6 +34,16 @@ export class AuthService {
   ) {
     this.checkAuthStatus();
   }
+
+  // export class YourService {
+  //   private apiUrl = environment.apiUrl;
+
+  //   constructor(private http: HttpClient) { }
+
+  //   getData() {
+  //     return this.http.get(`${this.apiUrl}/your-endpoint`);
+  //   }
+  // }
 
   login(credentials: LoginDto): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.AUTH_API}/login`, credentials)
