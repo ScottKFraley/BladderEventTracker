@@ -1,5 +1,6 @@
 services:
   angular-dev:
+    profiles: ["frontend"]
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -14,6 +15,7 @@ services:
     command: /bin/sh -c "while sleep 1000; do :; done"
 
   backend:
+    profiles: ["backend"]
     build:
       context: ./backend/trackerApi
       dockerfile: Dockerfile
@@ -25,6 +27,7 @@ services:
       - app-network
 
   database:
+    profiles: ["backend"]
     image: postgres:15
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
