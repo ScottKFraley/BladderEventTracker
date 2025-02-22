@@ -1,8 +1,38 @@
-<div>
-    <h1>Dashboard</h1>
-    <p>Welcome to your dashboard!</p>
-</div>
 
-<div>
-    This is where the user's Daily Totals will appear, as well as some detail records.
-</div>
+<h2>Survey Data (Last 2 Days)</h2>
+
+<button routerLink="/survey">Create an Event</button>
+
+<hr>
+
+<h2>Event Logs:</h2>
+@if (data().length > 0) {
+  <table>
+    <thead>
+      <tr>
+        <th>Event Date</th>
+        <th>Urgency</th>
+        <th>Was Asleep</th>
+        <th>Pain Level</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (log of data(); track log.id) {
+        <tr>
+          <td>
+            <a [routerLink]="['/tracking-log-detail', log.id]">
+              {{ log.eventDate | date:'short' }}
+            </a>
+          </td>
+          <td>{{ log.urgency }}</td>
+          <td>{{ log.awokeFromSleep ? 'Yes' : 'No' }}</td>
+          <td>{{ log.painLevel }}</td>
+          <td>{{ log.notes || 'None' }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+} @else {
+  <p>No Records Found</p>
+}

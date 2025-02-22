@@ -1,10 +1,10 @@
-// app.routes.ts
-import { Routes } from '@angular/router';
-import { LoginComponent } from './auth/login/login.component';
-import { DashboardComponent } from './dashboard/dashboard.component';  // Make sure this import works
+import { Routes, provideRouter } from '@angular/router';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: 'login', component: LoginComponent },
-  { path: 'dashboard', component: DashboardComponent }  // Direct component reference instead of lazy loading
+  { path: 'login', loadComponent: () => import('./auth/login/login.component').then(m => m.LoginComponent) },
+  { path: 'dashboard', loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent) },
+  { path: 'survey', loadComponent: () => import('./survey/survey.component').then(m => m.SurveyComponent) }
 ];
+
+export const AppRouting = provideRouter(routes);
