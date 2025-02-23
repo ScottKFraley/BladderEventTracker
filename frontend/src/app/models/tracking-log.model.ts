@@ -1,5 +1,5 @@
 
-export interface TrackingLog {
+export interface TrackingLogModel {
     id: string;
     eventDate: string;
     accident: boolean;

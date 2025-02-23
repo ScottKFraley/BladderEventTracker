@@ -1,15 +1,15 @@
 <h2>Tracking Log Details</h2>
 
-@if (trackingLog()) {
+@if (trackingLogSig()) {
   <table>
-    <tr><th>Event Date</th><td>{{ trackingLog()?.eventDate | date:'short' }}</td></tr>
-    <tr><th>Accident</th><td>{{ trackingLog()?.accident ? 'Yes' : 'No' }}</td></tr>
-    <tr><th>Changed Pad/Underwear</th><td>{{ trackingLog()?.changePadOrUnderware ? 'Yes' : 'No' }}</td></tr>
-    <tr><th>Leak Amount</th><td>{{ trackingLog()?.leakAmount }}</td></tr>
-    <tr><th>Urgency</th><td>{{ trackingLog()?.urgency }}</td></tr>
-    <tr><th>Was Asleep</th><td>{{ trackingLog()?.awokeFromSleep ? 'Yes' : 'No' }}</td></tr>
-    <tr><th>Pain Level</th><td>{{ trackingLog()?.painLevel }}</td></tr>
-    <tr><th>Notes</th><td>{{ trackingLog()?.notes || 'None' }}</td></tr>
+    <tr class="col-sm-6 col-md-4 col-lg-2"><th>Event Date</th><td>{{ trackingLogSig()?.eventDate | date:'short' }}</td></tr>
+    <tr><th>Accident</th><td>{{ trackingLogSig()?.accident ? 'Yes' : 'No' }}</td></tr>
+    <tr><th>Changed Pad/Underwear</th><td>{{ trackingLogSig()?.changePadOrUnderware ? 'Yes' : 'No' }}</td></tr>
+    <tr><th>Leak Amount</th><td>{{ trackingLogSig()?.leakAmount }}</td></tr>
+    <tr><th>Urgency</th><td>{{ trackingLogSig()?.urgency }}</td></tr>
+    <tr><th>Was Asleep</th><td>{{ trackingLogSig()?.awokeFromSleep ? 'Yes' : 'No' }}</td></tr>
+    <tr><th>Pain Level</th><td>{{ trackingLogSig()?.painLevel }}</td></tr>
+    <tr><th>Notes</th><td>{{ trackingLogSig()?.notes || 'None' }}</td></tr>
   </table>
 } @else {
   <p>No tracking log details available.</p>

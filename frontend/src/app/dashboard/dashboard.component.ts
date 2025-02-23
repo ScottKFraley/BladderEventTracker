@@ -2,8 +2,8 @@ import { Component, OnInit, signal, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { TrackingLog } from '../models/tracking-log.model';
-
+import { TrackingLogModel } from '../models/tracking-log.model';
+import { TrackingLogService } from '../services/tracking-log.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,11 +14,15 @@ import { TrackingLog } from '../models/tracking-log.model';
 })
 export class DashboardComponent implements OnInit {
   private http = inject(HttpClient);
-  data = signal<TrackingLog[]>([]);
+  private trackingLogService = inject(TrackingLogService);
+  data = signal<TrackingLogModel[]>([]);
 
   ngOnInit(): void {
     this.http.get<any[]>('/api/v1/tracker').subscribe({
-      next: (response) => this.data.set(response),
+      next: (response) => {
+        this.data.set(response);
+        this.trackingLogService.setTrackingLogs(response);
+      },
       error: (err) => console.error('Error fetching data:', err)
     });
   }
