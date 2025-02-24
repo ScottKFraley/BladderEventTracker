@@ -75,6 +75,9 @@ namespace trackerApi.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EventDate")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
 
                     b.ToTable("TrackingLog", (string)null);

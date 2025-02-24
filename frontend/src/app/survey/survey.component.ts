@@ -1,18 +1,25 @@
-import { Component, OnInit } from '@angular/core';
-import { Model } from 'survey-core'; // Import only what's needed
+import { Component, OnInit, inject } from '@angular/core';
+import { Model } from 'survey-core';
 import { SurveyModule } from 'survey-angular-ui';
-import 'survey-angular-ui/modern.css'; // Import the desired theme
+import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { SurveyService } from '../services/survey.service';
+import { SurveyResponse } from '../models/survey-response-model';
+
 
 @Component({
   selector: 'app-survey',
   standalone: true,
-  imports: [SurveyModule],
+  imports: [CommonModule, SurveyModule],
   templateUrl: './survey.component.html',
-  styleUrls: [ /* './survey.component.css' */]
+  styleUrls: ['./survey.component.sass']
 })
 export class SurveyComponent implements OnInit {
-  surveyJson = {
-    title: "Tracking Log Survey",
+  private surveyService = inject(SurveyService);
+  private router = inject(Router);
+
+  private readonly surveyJson = {
+    title: "Log the Bladder Event",
     elements: [
       { type: "text", name: "EventDate", title: "Event Date", inputType: "date", isRequired: true },
       { type: "boolean", name: "Accident", title: "Was there an accident?" },
@@ -25,10 +32,22 @@ export class SurveyComponent implements OnInit {
     ]
   };
 
-  surveyModel: Model = new Model(this.surveyJson); // Initialize the model immediately
+  surveyModel: Model | undefined;
 
   ngOnInit() {
-    // this.surveyModel = new Model(this.surveyJson);
-    // Additional logic if needed, but the model is already initialized
+    this.surveyModel = new Model(this.surveyJson);
+
+    this.surveyModel.onComplete.add((sender: any) => {
+      const surveyData: SurveyResponse = sender.data;
+
+      this.surveyService.submitSurvey(surveyData).subscribe({
+        next: () => {
+          this.router.navigate(['/dashboard']);
+        },
+        error: (error) => {
+          console.error('Error saving survey:', error);
+        }
+      });
+    });
   }
 }

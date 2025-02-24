@@ -40,6 +40,9 @@ public class AppDbContext : DbContext
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);  // or DeleteBehavior.Restrict if you don't want automatic deletion
 
+            // Create a unique constraint on EventDate
+            entity.HasIndex(e => e.EventDate).IsUnique();
+
             // Configure EventDate with default
             entity.Property(e => e.EventDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -92,6 +95,14 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     private readonly IConfiguration? _configuration;
 
+    /// <summary>
+    /// We need this parameterless constructor for migrations.
+    /// </summary>
+    public AppDbContextFactory()
+    {
+        _configuration = null;
+    }
+
     public AppDbContextFactory(IConfiguration? configuration = null)
     {
         _configuration = configuration;
@@ -99,7 +110,6 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Use provided configuration if available, otherwise build a new one
         IConfiguration configuration = _configuration ?? new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)
@@ -107,15 +117,20 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddUserSecrets<AppDbContextFactory>()
             .Build();
 
-        // Get the base connection string
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-        // Get the password from secrets
         var dbPassword = configuration["DbPassword"];
-        // Replace the placeholder with actual password
+
+        // Replace the hostname for local development
+        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+        {
+            connectionString = connectionString!.Replace("database", "localhost");
+        }
+
         connectionString = connectionString!.Replace("${DbPassword}", dbPassword ?? "test-password");
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
+
         return new AppDbContext(optionsBuilder.Options);
     }
 }
