@@ -9,6 +9,10 @@
 # specific alpha version stuff
 database/backup.sql
 
+# DO NOT check in ANYTHING in the .venv folder(s)
+**/venv/
+**/.venv/
+
 # Node
 /node_modules
 npm-debug.log

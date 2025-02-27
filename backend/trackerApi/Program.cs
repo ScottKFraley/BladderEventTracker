@@ -94,12 +94,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString)
 );
 
-
 //
 // Register the DI stuff
 // 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ITrackingLogService, TrackingLogService>();
+builder.Services.AddScoped<ITrackerEndpoints, TrackerEndpoints>();
 
 
 builder.Services.AddCors(options =>
@@ -156,7 +157,17 @@ app.UseAuthorization();
 // Map our endpoints
 app.MapAuthEndpoints();
 app.MapUserEndpoints();
-app.MapTrackerEndpoints();
+
+// TODO: Gotta test this change.
+//app.MapTrackerEndpoints();
+
+// gotta do this instead due to `static` issues
+// so, getting an instance of the class
+var trackerEndpoints = app.Services.GetRequiredService<ITrackerEndpoints>();
+// set up the group mapping
+var group = app.MapGroup("/api/v1/tracker");
+// call the method that does the mapping so that the endpoint are functional!
+trackerEndpoints.MapEndpoints(group);
 
 // This stays right here.
 app.Run();
