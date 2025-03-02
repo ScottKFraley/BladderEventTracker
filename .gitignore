@@ -24,6 +24,8 @@ yarn-error.log
 !.env.example
 !./backend/trackerApi/.env
 
+**/set-env-vars.*
+
 # IDEs and editors
 .idea/
 .project
@@ -97,7 +99,12 @@ msbuild.wrn
 
 # Logging files
 *.log
+
+# Ignore all .txt files
 *.txt
+# But allow README.txt files in any directory
+!README.txt
+!readme.txt
 
 # Test related files
 **/TestResults/*

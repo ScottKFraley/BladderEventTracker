@@ -2,24 +2,76 @@ import os
 import uuid
 import re
 from datetime import datetime
+import asyncio
 import psycopg2
-from msgraph.generated.users.users_request_builder import UsersRequestBuilder
-from kiota_http.httpx_request_adapter import HttpxRequestAdapter
-from azure.identity import DeviceCodeCredential
-from msgraph import GraphServiceClient
+import requests
+import msal
 
 
 class OneNoteExtractor:
     def __init__(self):
-        client_id = os.getenv("AZURE_CLIENT_ID")
-        tenant_id = os.getenv("AZURE_TENANT_ID")
+        # Get app credentials from environment variables
+        self.client_id = os.getenv("AZURE_CLIENT_ID")
+        self.tenant_id = os.getenv("AZURE_TENANT_ID")
+        self.client_secret = os.getenv(
+            "AZURE_CLIENT_SECRET"
+        )  # You'll need to set this env var
 
-        credential = DeviceCodeCredential(client_id=client_id, tenant_id=tenant_id)
-
-        request_adapter = HttpxRequestAdapter(credential)
-        self.client = GraphServiceClient(request_adapter)
+        self.graph_url = "https://graph.microsoft.com/v1.0"
         self.user_id = None
         self.db_conn = None
+        self.access_token = None
+
+        # Create an MSAL app
+        # Update the authority to include 'common' for multi-tenant apps
+        self.app = msal.PublicClientApplication(
+            client_id=self.client_id,
+            authority=f"https://login.microsoftonline.com/{self.tenant_id}",
+        )
+
+        # Add these scopes for OneNote access
+        self.scopes = ["Notes.Read.All", "Notes.ReadWrite.All"]
+
+
+    async def get_token(self):
+        # Try to get token from cache first
+        accounts = self.app.get_accounts()
+        if accounts:
+            result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
+            if result:
+                self.access_token = result["access_token"]
+                return self.access_token
+
+        # If no cached token, start interactive login
+        result = self.app.acquire_token_interactive(scopes=self.scopes)
+
+        if "access_token" in result:
+            self.access_token = result["access_token"]
+            return self.access_token
+        else:
+            print(f"Error getting token: {result.get('error')}")
+            print(f"Error description: {result.get('error_description')}")
+            raise Exception("Failed to acquire token")
+
+    async def make_graph_request(self, endpoint):
+        if not self.access_token:
+            await self.get_token()
+
+        headers = {
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.get(f"{self.graph_url}{endpoint}", headers=headers)
+
+        # Handle token expiration
+        if response.status_code == 401:
+            # Refresh token and retry
+            await self.get_token()
+            headers["Authorization"] = f"Bearer {self.access_token}"
+            response = requests.get(f"{self.graph_url}{endpoint}", headers=headers)
+
+        return response
 
     def connect_to_db(self):
         # Get connection details from environment variables
@@ -27,26 +79,49 @@ class OneNoteExtractor:
             "dbname": os.getenv("PG_DATABASE"),
             "user": os.getenv("PG_USER"),
             "password": os.getenv("PG_PASSWORD"),
-            "host": os.getenv("PG_HOST"),
+            "host": os.getenv("PG_HOST", "localhost"),
             "port": os.getenv("PG_PORT", "5432"),
         }
         self.db_conn = psycopg2.connect(**conn_params)
 
     async def get_notebooks(self):
-        response = await self.client.me.onenote.notebooks.get()
-        return response.value if response else []
+        response = await self.make_graph_request("/me/onenote/notebooks")
+        if response.status_code == 200:
+            return response.json().get("value", [])
+
+        print(f"Error getting notebooks: {response.status_code} - {response.text}")
+
+        return []
 
     async def get_sections(self, notebook_id):
-        response = await self.client.me.onenote.notebooks.by_notebook_id(
-            notebook_id
-        ).sections.get()
-        return response.value if response else []
+        response = await self.make_graph_request(
+            f"/me/onenote/notebooks/{notebook_id}/sections"
+        )
+        if response.status_code == 200:
+            return response.json().get("value", [])
+
+        print(f"Error getting sections: {response.status_code} - {response.text}")
+
+        return []
 
     async def get_pages(self, section_id):
-        response = await self.client.me.onenote.sections.by_section_id(
-            section_id
-        ).pages.get()
-        return response.value if response else []
+        response = await self.make_graph_request(
+            f"/me/onenote/sections/{section_id}/pages"
+        )
+        if response.status_code == 200:
+            return response.json().get("value", [])
+        print(f"Error getting pages: {response.status_code} - {response.text}")
+
+        return []
+
+    async def get_page_content(self, page_id):
+        response = await self.make_graph_request(f"/me/onenote/pages/{page_id}/content")
+        if response.status_code == 200:
+            return response.text
+
+        print(f"Error getting page content: {response.status_code} - {response.text}")
+
+        return ""
 
     def parse_page_content(self, page_content, event_date):
         entries = []
@@ -109,15 +184,15 @@ class OneNoteExtractor:
 
         print("Available notebooks:")
         for idx, notebook in enumerate(notebooks):
-            print(f"{idx + 1}. {notebook.display_name}")
+            print(f"{idx + 1}. {notebook['displayName']}")
 
         notebook_idx = int(input("Select notebook number: ")) - 1
         selected_notebook = notebooks[notebook_idx]
 
-        sections = await self.get_sections(selected_notebook.id)
+        sections = await self.get_sections(selected_notebook["id"])
         print("\nAvailable sections:")
         for idx, section in enumerate(sections):
-            print(f"{idx + 1}. {section.display_name}")
+            print(f"{idx + 1}. {section['displayName']}")
 
         section_idx = int(input("Select section number: ")) - 1
         selected_section = sections[section_idx]
@@ -128,23 +203,28 @@ class OneNoteExtractor:
         except ValueError:
             raise ValueError("Invalid UUID format")
 
-        pages = await self.get_pages(selected_section.id)
+        pages = await self.get_pages(selected_section["id"])
         cursor = self.db_conn.cursor()
 
         for page in pages:
-            event_date = datetime.strptime(page.title, "%Y-%m-%d").date()
-            content_response = await self.client.me.onenote.pages.by_page_id(
-                page.id
-            ).content.get()
-            content = content_response.text
+            try:
+                event_date = datetime.strptime(page["title"], "%Y-%m-%d").date()
+                content = await self.get_page_content(page["id"])
 
-            entries = self.parse_page_content(content, event_date)
+                entries = self.parse_page_content(content, event_date)
+                print(f"Processing page {page['title']} - found {len(entries)} entries")
 
-            for entry in entries:
-                sql, values = self.generate_insert_statement(entry)
-                cursor.execute(sql, values)
+                for entry in entries:
+                    sql, values = self.generate_insert_statement(entry)
+                    cursor.execute(sql, values)
 
-        self.db_conn.commit()
+                self.db_conn.commit()
+                print(f"Successfully imported data from {page['title']}")
+
+            except Exception as e:
+                self.db_conn.rollback()
+                print(f"Error processing page {page['title']}: {str(e)}")
+
         cursor.close()
 
 
@@ -155,6 +235,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())
