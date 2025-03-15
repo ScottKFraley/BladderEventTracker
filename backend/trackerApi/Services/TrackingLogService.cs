@@ -17,6 +17,49 @@ public class TrackingLogService : ITrackingLogService
         _logger = logger;
     }
 
+    public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
+
+            //var nDaysAgo = DateTime.UtcNow.AddDays(-numDays);
+
+            //var trackedEvents = await _dbContext.TrackingLogs
+            //    .Where(t => t.UserId == userId && t.EventDate >= startDate)
+            //    .OrderByDescending(t => t.LoggedAt)
+            //    .ToListAsync();
+            var nDaysAgo = DateTime.UtcNow.AddDays(-numDays);
+
+            var trackedEvents = await _dbContext.TrackingLogs
+                .Where(t => t.UserId == userId && t.EventDate >= nDaysAgo)
+                .OrderByDescending(t => t.EventDate)
+                .ToListAsync();
+
+            if (trackedEvents == null)
+            {
+                const string MessageTemplate = "No logged events found for the last {NumDays} days";
+                var message = string.Format(MessageTemplate.Replace("{NumDays}", "{0}"), numDays);
+
+                _logger.LogWarning(MessageTemplate, numDays);
+
+                throw new Exception(message);
+            }
+
+            _logger.LogInformation(
+                "{trackedEvents.Count} tracking log record(s) found for the last {NumDays} days", 
+                trackedEvents.Count, numDays);
+
+            return trackedEvents;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tracking log records for the last {NumDays} days", numDays);
+
+            throw;
+        }
+    }
+
     public async Task<IEnumerable<TrackingLogItem>> GetLogRecordsAsync(Guid? userId = null)
     {
         try

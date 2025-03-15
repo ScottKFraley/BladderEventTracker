@@ -24,11 +24,11 @@ services:
       args:
         - DB_PASSWORD=${POSTGRES_PASSWORD}
     environment:
-        - ASPNETCORE_ENVIRONMENT=Development
-        - PG_DATABASE=BETrackingDb
-        - PG_USER=postgres
-        - PG_HOST=database
-        - PG_PORT=5432
+      - ASPNETCORE_ENVIRONMENT=Production
+      - PG_DATABASE=BETrackingDb
+      - PG_USER=postgres
+      - PG_HOST=database
+      - PG_PORT=5432
     ports:
       - "8080:80"
     depends_on:

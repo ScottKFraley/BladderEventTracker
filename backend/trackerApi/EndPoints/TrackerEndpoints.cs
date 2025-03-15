@@ -1,5 +1,6 @@
 ﻿namespace trackerApi.EndPoints;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 using trackerApi.DbContext;
@@ -15,6 +16,43 @@ public class TrackerEndpoints : ITrackerEndpoints
     {
         _trackingService = trackingService;
         _logger = logger;
+    }
+
+
+    /// <summary>
+    /// Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId) ?!
+    /// </summary>
+    /// <param name="numDays"></param>
+    /// <param name="userId"></param>
+    /// <returns>
+    /// A Task&lt;IResult&gt; instance.
+    /// </returns>
+    public async Task<IResult> GetLastNDaysLogRecordsAsync(int numDays, Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Processing GET request for last {NumDays} days of tracking log records for user {UserId}", numDays, userId);
+
+            if (userId == Guid.Empty)
+            {
+                return TypedResults.BadRequest("User ID is required");
+            }
+
+            var records = await _trackingService.GetNDaysOfLogRecordsAsync(numDays, userId);
+
+            if (records.Count == 0)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(records);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing GET request for tracking log records");
+
+            return TypedResults.Problem("Error retrieving tracking log records");
+        }
     }
 
     public async Task<IResult> GetLogRecords(Guid? userId = null)
@@ -63,26 +101,27 @@ public class TrackerEndpoints : ITrackerEndpoints
         }
     }
 
-    public void MapEndpoints(IEndpointRouteBuilder group)
+    public void MapTrackerEndpoints(IEndpointRouteBuilder group)
     {
-        // TODO: Q wants me to put the following in Program.cs, but I'd rather have it in here! Fix it!
-
-        //var trackerEndpoints = app.Services.GetRequiredService<ITrackerEndpoints>();
-        //var group = app.MapGroup("/tracking");
-        //trackerEndpoints.MapEndpoints(group);
-
-        // // Group your endpoints under a common route
-        // var group = app.MapGroup("/api/v1/tracker");
-        // USE THIS GROUPER ^^^^^^^
+        // Group your endpoints under a common route
+        // See Program.cs near the bottom.
 
         // // endpoint for GETTING tracker rows
         // group.MapGet(
         // MOVE THIS into its own method, as the below two Mappings are configured.
 
-        group.MapGet("/", GetLogRecords)
+        group.MapGet("/all", GetLogRecords)
              .WithName("GetLogRecords")
              .WithOpenApi()
              .WithDescription("Gets all tracking log items, optionally filtered by user ID");
+
+        // endpoint for GETTING tracker rows
+        group.MapGet("/{numDays}", GetLastNDaysLogRecordsAsync)
+            .WithName("GetTrackedEntries")
+            .WithOpenApi()                      // do I want/need this, if I have the below?
+            .Produces<TrackingLogItem>(200)     // Document response types
+            .Produces(404)
+            .RequireAuthorization();
 
         group.MapPost("/", CreateLogRecord)
              .WithName("CreateLogRecord")
@@ -90,39 +129,3 @@ public class TrackerEndpoints : ITrackerEndpoints
              .WithDescription("Creates a new tracking log item");
     }
 }
-
-//public static class TrackerEndpoints
-//{
-//    public static void MapTrackerEndpoints(this WebApplication app)
-//    {
-//        // Group your endpoints under a common route
-//        var group = app.MapGroup("/api/v1/tracker");
-
-//        //group.MapGet("/{id}", GetLogRecordById);
-//        group.MapPost("/", CreateLogRecord);
-
-//        // endpoint for GETTING tracker rows
-//        group.MapGet(
-//                "/",
-//                async (AppDbContext context) =>
-//                {
-//                    var twoDaysAgo = DateTime.UtcNow.AddDays(-2);
-
-//                    var trackedEvents = await context.TrackingLogs
-//                        .Where(e => e.EventDate >= twoDaysAgo)
-//                        .OrderByDescending(e => e.EventDate)
-//                        .ToListAsync();
-
-//                    return trackedEvents;
-//                }
-//            )
-//            .WithName("GetTrackedEntry")
-//            .WithOpenApi()                      // do I want/need this, if I have the below?
-//            .Produces<TrackingLogItem>(200)     // Document response types
-//            .Produces(404)
-//            .RequireAuthorization();
-
-//        // ... other user-related endpoints
-//    }
-//}
-
