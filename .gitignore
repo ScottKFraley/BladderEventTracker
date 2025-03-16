@@ -98,6 +98,7 @@ msbuild.err
 msbuild.wrn
 
 # Logging files
+**/logs/
 *.log
 
 # Ignore all .txt files

@@ -8,8 +8,14 @@ using trackerApi.Models;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options) { }
+    private readonly ILogger<AppDbContext> _logger;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, ILogger<AppDbContext> logger)
+        : base(options)
+    {
+        _logger = logger;
+        _logger.LogInformation("DbContext instance created");
+    }
 
     public DbSet<Models.TrackingLogItem> TrackingLogs { get; set; }
 
@@ -89,11 +95,21 @@ public class AppDbContext : DbContext
                 .ValueGeneratedOnUpdate(); // Update on row modification (if supported)
         });
     }
+
+    public override void Dispose()
+    {
+        _logger.LogInformation("DbContext instance disposing <----<----");
+
+        GC.SuppressFinalize(this);
+
+        base.Dispose();
+    }
 }
 
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     private readonly IConfiguration? _configuration;
+    private readonly ILogger<AppDbContext> _logger;
 
     /// <summary>
     /// We need this parameterless constructor for migrations.
@@ -101,11 +117,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContextFactory()
     {
         _configuration = null;
+        _logger = null!;
     }
 
-    public AppDbContextFactory(IConfiguration? configuration = null)
+    public AppDbContextFactory(ILogger<AppDbContext> logger, IConfiguration? configuration = null)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
     public AppDbContext CreateDbContext(string[] args)
@@ -131,7 +149,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
 
-        return new AppDbContext(optionsBuilder.Options);
+        return new AppDbContext(optionsBuilder.Options, this._logger);
     }
 }
 

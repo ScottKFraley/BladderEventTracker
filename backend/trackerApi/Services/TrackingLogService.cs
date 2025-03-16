@@ -13,8 +13,9 @@ public class TrackingLogService : ITrackingLogService
 
     public TrackingLogService(AppDbContext dbContext, ILogger<TrackingLogService> logger)
     {
-        _dbContext = dbContext;
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger;
+        _logger.LogInformation("TrackingLogService constructed with DbContext instance.");
     }
 
     public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
@@ -23,12 +24,13 @@ public class TrackingLogService : ITrackingLogService
         {
             _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
 
-            //var nDaysAgo = DateTime.UtcNow.AddDays(-numDays);
+            if (_dbContext == null)
+            {
+                _logger.LogError("DbContext is null");
+                throw new InvalidOperationException("DbContext is null");
+            }
 
-            //var trackedEvents = await _dbContext.TrackingLogs
-            //    .Where(t => t.UserId == userId && t.EventDate >= startDate)
-            //    .OrderByDescending(t => t.LoggedAt)
-            //    .ToListAsync();
+            // Your query logic here
             var nDaysAgo = DateTime.UtcNow.AddDays(-numDays);
 
             var trackedEvents = await _dbContext.TrackingLogs
@@ -51,6 +53,11 @@ public class TrackingLogService : ITrackingLogService
                 trackedEvents.Count, numDays);
 
             return trackedEvents;
+        }
+        catch (ObjectDisposedException ode)
+        {
+            _logger.LogError(ode, "DbContext was disposed when attempting to access it!");
+            throw;
         }
         catch (Exception ex)
         {

@@ -1,13 +1,19 @@
 ﻿
+using Microsoft.Extensions.Logging;
+
 namespace trackerApi.IntegrationTests.Fixtures;
 
 // DatabaseFixture.cs
 public class DatabaseFixture : IAsyncLifetime
 {
+    private readonly ILogger<AppDbContext> _logger;
+
     public AppDbContext Context { get; private set; }
 
-    public DatabaseFixture()
+    public DatabaseFixture(ILogger<AppDbContext> logger)
     {
+        _logger = logger;
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.Testing.json")
@@ -21,7 +27,7 @@ public class DatabaseFixture : IAsyncLifetime
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
 
-        Context = new AppDbContext(optionsBuilder.Options);
+        Context = new AppDbContext(optionsBuilder.Options, _logger);
     }
 
     public async Task InitializeAsync()

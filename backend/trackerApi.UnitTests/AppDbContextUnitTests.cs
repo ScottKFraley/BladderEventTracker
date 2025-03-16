@@ -1,7 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+using Moq;
 
 using trackerApi.DbContext;
+using trackerApi.EndPoints;
+using trackerApi.Services;
 
 namespace trackerApi.UnitTests;
 
@@ -9,22 +14,26 @@ namespace trackerApi.UnitTests;
 public class AppDbContextUnitTests : IClassFixture<EnvironmentVariableFixture>
 {
     private readonly IConfiguration _testConfiguration;
+    private readonly Mock<ILogger<AppDbContext>> mockDbCtxLogger;
 
     public AppDbContextUnitTests(EnvironmentVariableFixture fixture)
     {
+        // TODO: Why aren't I doing this?
         //Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "unitTests");
         
         _testConfiguration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.unitTests.json", optional: false)
             .Build();
+
+        mockDbCtxLogger = new Mock<ILogger<AppDbContext>>();
     }
 
     [Fact]
     public void CreateDbContext_ShouldCreateValidContext()
     {
         // Arrange
-        var factory = new AppDbContextFactory(_testConfiguration);
+        var factory = new AppDbContextFactory(mockDbCtxLogger.Object, _testConfiguration);
 
         // Act
         var context = factory.CreateDbContext([]);
@@ -38,7 +47,7 @@ public class AppDbContextUnitTests : IClassFixture<EnvironmentVariableFixture>
     public void CreateDbContext_ShouldHaveValidConnectionString()
     {
         // Arrange
-        var factory = new AppDbContextFactory(_testConfiguration);
+        var factory = new AppDbContextFactory(mockDbCtxLogger.Object, _testConfiguration);
 
         // Act
         var context = factory.CreateDbContext([]);
@@ -61,11 +70,13 @@ public class EnvironmentVariableFixture : IDisposable
     {
         _variableName = "ASPNETCORE_ENVIRONMENT";
         _originalValue = Environment.GetEnvironmentVariable(_variableName);
+
         Environment.SetEnvironmentVariable(_variableName, "unitTests");
     }
 
     public void Dispose()
     {
         Environment.SetEnvironmentVariable(_variableName, _originalValue);
+        GC.SuppressFinalize(this);
     }
 }

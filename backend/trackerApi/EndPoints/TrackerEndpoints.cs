@@ -103,12 +103,8 @@ public class TrackerEndpoints : ITrackerEndpoints
 
     public void MapTrackerEndpoints(IEndpointRouteBuilder group)
     {
-        // Group your endpoints under a common route
+        // Grouping these endpoints under a common route.
         // See Program.cs near the bottom.
-
-        // // endpoint for GETTING tracker rows
-        // group.MapGet(
-        // MOVE THIS into its own method, as the below two Mappings are configured.
 
         group.MapGet("/all", GetLogRecords)
              .WithName("GetLogRecords")
@@ -116,7 +112,7 @@ public class TrackerEndpoints : ITrackerEndpoints
              .WithDescription("Gets all tracking log items, optionally filtered by user ID");
 
         // endpoint for GETTING tracker rows
-        group.MapGet("/{numDays}", GetLastNDaysLogRecordsAsync)
+        group.MapGet("/{numDays}/{userId}", GetLastNDaysLogRecordsAsync)
             .WithName("GetTrackedEntries")
             .WithOpenApi()                      // do I want/need this, if I have the below?
             .Produces<TrackingLogItem>(200)     // Document response types
