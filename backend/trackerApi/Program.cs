@@ -185,7 +185,7 @@ try
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<ITokenService, TokenService>();
     builder.Services.AddScoped<ITrackingLogService, TrackingLogService>();
-    builder.Services.AddSingleton<ITrackerEndpoints, TrackerEndpoints>();
+    builder.Services.AddSingleton<TrackerEndpoints>();
     // ILogger here?
 
     builder.Services.AddCors(options =>
@@ -264,7 +264,7 @@ try
     app.MapUserEndpoints();
 
     Log.Information("Mapping Tracker endpoints...");
-    var trackerEndpoints = app.Services.GetRequiredService<ITrackerEndpoints>();
+    var trackerEndpoints = app.Services.GetRequiredService<TrackerEndpoints>();
     // set up the group mapping
     var group = app.MapGroup("/api/v1/tracker");
     // call the method that does the mapping so that the endpoint are functional!

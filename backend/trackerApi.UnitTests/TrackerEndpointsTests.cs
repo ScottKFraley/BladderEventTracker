@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿namespace trackerApi.UnitTests;
+
+using Bogus;
+
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 
@@ -7,94 +11,150 @@ using Moq;
 using trackerApi.EndPoints;
 using trackerApi.Models;
 using trackerApi.Services;
+using trackerApi.UnitTests.Fakers;
 
 public class TrackerEndpointsTests
 {
-    private readonly Mock<ITrackingLogService> _mockService;
+    private readonly Mock<ITrackingLogService> _mockTrackingService;
     private readonly Mock<ILogger<TrackerEndpoints>> _mockLogger;
-    private readonly ITrackerEndpoints _endpoints;
 
     public TrackerEndpointsTests()
     {
-        _mockService = new Mock<ITrackingLogService>();
+        _mockTrackingService = new Mock<ITrackingLogService>();
         _mockLogger = new Mock<ILogger<TrackerEndpoints>>();
-        _endpoints = new TrackerEndpoints(_mockService.Object, _mockLogger.Object);
     }
 
+    // Tests for HandleGetLogRecords
     [Fact]
-    public async Task GetLogRecords_ReturnsOkResult_WhenServiceSucceeds()
+    public async Task HandleGetLogRecords_ReturnsOkResult_WhenServiceSucceeds()
     {
         // Arrange
-        var testRecords = new List<TrackingLogItem>
-        {
-            new TrackingLogItem { Id = Guid.NewGuid() }
-        };
-        _mockService.Setup(s => s.GetLogRecordsAsync(It.IsAny<Guid?>()))
-            .ReturnsAsync(testRecords);
+        // Generate a list of 5 fake items, with a specific user ID
+        var userId = Guid.NewGuid();
+        var fakeItemsWithUserId = TrackingLogItemFaker.Generate(5, userId);
+
+        _mockTrackingService
+            .Setup(s => s.GetLogRecordsAsync(It.IsAny<Guid?>()))
+            .ReturnsAsync(fakeItemsWithUserId);
 
         // Act
-        var result = await _endpoints.GetLogRecords();
+        var result = await TrackerEndpoints.HandleGetLogRecords(
+            _mockTrackingService.Object,
+            _mockLogger.Object);
 
         // Assert
         var okResult = Assert.IsType<Ok<IEnumerable<TrackingLogItem>>>(result);
-        Assert.Equal(testRecords, okResult.Value);
+        Assert.Equal(fakeItemsWithUserId, okResult.Value);
     }
 
-    // Here's how to add logging to test(s)
-    //[Fact]
-    //public void ShouldLogError_WhenSomethingFails()
-    //{
-    //    // Arrange
-    //    var loggerMock = new Mock<ILogger<TrackerEndpoints>>();
-    //    var trackingService = new Mock<ITrackingLogService>();
-
-    //    var endpoints = new TrackerEndpoints(
-    //        trackingService.Object,
-    //        loggerMock.Object
-    //    );
-
-    //    // Act
-    //    // ... perform your test action ...
-
-    //    // Assert
-    //    loggerMock.Verify(
-    //        x => x.Log(
-    //            LogLevel.Error,
-    //            It.IsAny<EventId>(),
-    //            It.Is<It.IsAnyType>((v, t) => true),
-    //            It.IsAny<Exception>(),
-    //            It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
-    //        Times.Once);
-    //}
-
-    /* 
-    // If you want to add a parameterized test, here's an example:
-    [Theory]
-    [InlineData(LogLevel.Error)]
-    [InlineData(LogLevel.Critical)]
-    public void ShouldLog_WhenSpecifiedLevelOccurs(LogLevel level)
+    // Tests for HandleGetLastNDaysLogRecords
+    [Fact]
+    public async Task HandleGetLastNDaysLogRecords_ReturnsBadRequest_WhenUserIdEmpty()
     {
         // Arrange
-        var loggerMock = new Mock<ILogger<TrackerEndpoints>>();
-        var trackingService = new Mock<ITrackingLogService>();
-
-        var endpoints = new TrackerEndpoints(
-            trackingService.Object,
-            loggerMock.Object
-        );
+        var numDays = 7;
+        var emptyUserId = Guid.Empty;
 
         // Act
-        // ... perform your test action ...
+        var result = await TrackerEndpoints.HandleGetLastNDaysLogRecords(
+            numDays,
+            emptyUserId,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
 
         // Assert
-        loggerMock.Verify(
-            x => x.Log(
-                level,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception>(),
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
-            Times.Once);
+        var badRequestResult = Assert.IsType<BadRequest<string>>(result);
+        Assert.Equal("User ID is required", badRequestResult.Value);
     }
-    */
+
+    [Fact]
+    public async Task HandleGetLastNDaysLogRecords_ReturnsOkWithEmptyList_WhenNoRecordsFound()
+    {
+        // Arrange
+        var numDays = 7;
+        var userId = Guid.NewGuid();
+        _mockTrackingService
+            .Setup(s => s.GetNDaysOfLogRecordsAsync(numDays, userId))
+            .ReturnsAsync(new List<TrackingLogItem>());
+
+        // Act
+        var result = await TrackerEndpoints.HandleGetLastNDaysLogRecords(
+            numDays,
+            userId,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var okResult = Assert.IsType<Ok<List<TrackingLogItem>>>(result);
+        Assert.NotNull(okResult.Value);
+        Assert.Empty(okResult.Value);
+    }
+
+    // Tests for HandleCreateLogRecord
+    [Fact]
+    public async Task HandleCreateLogRecord_ReturnsCreatedResult_WhenSuccessful()
+    {
+        // Arrange
+        var logItem = new TrackingLogItem { /* populate properties */ };
+        var createdItem = new TrackingLogItem { Id = Guid.NewGuid() /* populate other properties */ };
+
+        _mockTrackingService
+            .Setup(s => s.CreateLogRecordAsync(logItem))
+            .ReturnsAsync(createdItem);
+
+        // Act
+        var result = await TrackerEndpoints.HandleCreateLogRecord(
+            logItem,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var createdResult = Assert.IsType<Created<TrackingLogItem>>(result);
+        Assert.Equal($"/tracking/{createdItem.Id}", createdResult.Location);
+        Assert.Equal(createdItem, createdResult.Value);
+    }
+
+    [Fact]
+    public async Task HandleCreateLogRecord_ReturnsBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        var logItem = new TrackingLogItem();
+        var expectedMessage = "Validation failed";
+
+        _mockTrackingService
+            .Setup(s => s.CreateLogRecordAsync(logItem))
+            .ThrowsAsync(new ArgumentException(expectedMessage));
+
+        // Act
+        var result = await TrackerEndpoints.HandleCreateLogRecord(
+            logItem,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequest<string>>(result);
+        Assert.Equal(expectedMessage, badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task HandleCreateLogRecord_ReturnsNotFound_WhenUserNotFound()
+    {
+        // Arrange
+        var logItem = new TrackingLogItem();
+        var expectedMessage = "User not found";
+
+        _mockTrackingService
+            .Setup(s => s.CreateLogRecordAsync(logItem))
+            .ThrowsAsync(new KeyNotFoundException(expectedMessage));
+
+        // Act
+        var result = await TrackerEndpoints.HandleCreateLogRecord(
+            logItem,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFound<string>>(result);
+        Assert.Equal(expectedMessage, notFoundResult.Value);
+    }
 }

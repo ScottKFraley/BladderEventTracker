@@ -21,9 +21,8 @@ services:
     build:
       context: ./backend/trackerApi
       dockerfile: Dockerfile
-      args:
-        - DB_PASSWORD=${POSTGRES_PASSWORD}
     environment:
+        - PG_PASSWORD=${POSTGRES_PASSWORD} 
         - ASPNETCORE_ENVIRONMENT=Development
         - PG_DATABASE=BETrackingDb
         - PG_USER=postgres
