@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["C:\\Data\\forBladderTracker\\data_from_onenote_testing.dat"],
+            "justMyCode": true
+        }
+    ]
+}

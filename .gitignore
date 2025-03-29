@@ -6,8 +6,12 @@
 /out-tsc
 /bazel-out
 
-# specific alpha version stuff
+# no data files
 database/backup.sql
+**/*.dat
+**/*.sql
+**/*.psql
+**/*.pgsql
 
 # DO NOT check in ANYTHING in the .venv folder(s)
 **/venv/
@@ -51,6 +55,7 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+**/*.lnk
 
 # System files
 .DS_Store
