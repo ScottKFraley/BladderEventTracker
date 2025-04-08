@@ -23,6 +23,7 @@ public class TrackerEndpoints //: ITrackerEndpoints
     // No need for constructor injection anymore
     public void MapTrackerEndpoints(IEndpointRouteBuilder group)
     {
+        // TODO: So as not to confuse myself, let alone others, should rename "GetLogRecords" to "GetAllTrackerLogRecords"
         group.MapGet("/all", HandleGetLogRecords)
              .WithName("GetLogRecords")
              .WithOpenApi()

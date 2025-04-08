@@ -1,9 +1,11 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, discardPeriodicTasks, fakeAsync, flush, tick } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { RouterTestingModule } from '@angular/router/testing';
+import { RouterModule } from '@angular/router';
 import { AuthService, LoginDto, AuthResponse } from './auth.service';
 import { Router } from '@angular/router';
 import { Component } from '@angular/core';
+import { TOKEN_REFRESH_THRESHOLD } from './auth.config';
+
 
 @Component({
     template: ''
@@ -21,16 +23,20 @@ describe('AuthService', () => {
     };
 
     beforeEach(() => {
+        jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
         TestBed.configureTestingModule({
             imports: [
                 HttpClientTestingModule,
-                RouterTestingModule.withRoutes([
+                RouterModule.forRoot([
                     { path: 'login', component: {} as any },
-                    { path: 'dashboard', component: MockDashboardComponent }  // Use the mock component
+                    { path: 'dashboard', component: MockDashboardComponent }
                 ])
             ],
-            declarations: [MockDashboardComponent],  // Declare the mock component
-            providers: [AuthService]
+            declarations: [MockDashboardComponent],
+            providers: [
+                AuthService,
+                { provide: TOKEN_REFRESH_THRESHOLD, useValue: 1000 } // Add this line
+            ]
         });
 
         service = TestBed.inject(AuthService);
@@ -113,26 +119,93 @@ describe('AuthService', () => {
             username: 'testuser',
             password: 'testpass'
         };
-
-        it('should setup token expiry timer on successful auth', (done) => {
+    
+        it('should setup token expiry timer on successful auth', fakeAsync(() => {
             // Arrange
             const mockResponse: AuthResponse = { token: 'new-token' };
-            jasmine.clock().install();  // Add this
-
-            // Act
-            service.login(mockCredentials).subscribe(() => {
-                // Fast-forward time to just before token refresh
-                jasmine.clock().tick(100);  // Replace setTimeout with this
-                const refreshReq = httpMock.expectOne('/api/auth/token');
-                expect(refreshReq.request.method).toBe('POST');
-                refreshReq.flush({ token: 'refreshed-token' });
-                jasmine.clock().uninstall();  // Add this
-                done();
-            });
-
-            // Handle initial login request
-            const loginReq = httpMock.expectOne('/api/auth/login');
+            
+            // Act - Login
+            service.login(mockCredentials).subscribe();
+            const loginReq = httpMock.expectOne(`${service['AUTH_API']}/login`);
             loginReq.flush(mockResponse);
+    
+            // Get the expiry time that was set
+            const expiry = parseInt(localStorage.getItem(service['TOKEN_EXPIRY_KEY']) || '0', 10);
+            const timeUntilRefresh = expiry - Date.now() - 1000; // Using the 1000ms threshold
+    
+            // Fast-forward to just before refresh
+            tick(timeUntilRefresh);
+    
+            // Handle the refresh token request
+            const refreshReq = httpMock.expectOne(`${service['AUTH_API']}/token`);
+            expect(refreshReq.request.method).toBe('POST');
+            refreshReq.flush({ token: 'refreshed-token' });
+    
+            // Allow any pending operations to complete
+            tick();
+    
+            // Assertions
+            expect(localStorage.getItem(service['TOKEN_KEY'])).toBe('refreshed-token');
+    
+            // Clean up
+            service.stopRefreshTimer();
+            flush();
+            discardPeriodicTasks();
+        }));
+    
+        afterEach(() => {
+            service.stopRefreshTimer();
+            localStorage.clear();
+            httpMock.verify();
         });
     });
+    
+    // describe('token management', () => {
+    //     const mockCredentials: LoginDto = {
+    //         username: 'testuser',
+    //         password: 'testpass'
+    //     };
+
+    //     it('should setup token expiry timer on successful auth', fakeAsync(() => {
+    //         // Arrange
+    //         const mockResponse: AuthResponse = { token: 'new-token' };
+
+    //         // Act
+    //         service.login(mockCredentials).subscribe();
+
+    //         // Handle initial login request
+    //         const loginReq = httpMock.expectOne('/api/auth/login');
+    //         loginReq.flush(mockResponse);
+
+    //         // Get the expiry time that was set
+    //         const expiryTime = parseInt(localStorage.getItem('auth_token_expiry') || '0', 10);
+    //         const now = new Date().getTime();
+    //         const timeUntilRefresh = (expiryTime - now) - service['TOKEN_REFRESH_THRESHOLD'];
+
+    //         // Fast-forward time to when the refresh should happen
+    //         tick(timeUntilRefresh);
+
+    //         // Handle the refresh request
+    //         const refreshReq = httpMock.expectOne('/api/auth/token');
+    //         expect(refreshReq.request.method).toBe('POST');
+    //         refreshReq.flush({ token: 'refreshed-token' });
+
+    //         // Complete all pending asynchronous operations
+    //         tick();
+
+    //         // Verify the token was updated
+    //         expect(localStorage.getItem('auth_token')).toBe('refreshed-token');
+
+    //         // Clean up any remaining timers and complete the test
+    //         service.stopRefreshTimer();
+    //         discardPeriodicTasks();
+    //         flush();
+    //     }));
+
+    //     afterEach(() => {
+    //         // Clean up timers after each test
+    //         service.stopRefreshTimer();
+    //     });
+    // });
+
 });

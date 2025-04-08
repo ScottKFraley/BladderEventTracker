@@ -40,7 +40,7 @@ describe('SurveyService', () => {
       expect(response).toBeTruthy();
     });
 
-    const req = httpMock.expectOne('/api/events');
+    const req = httpMock.expectOne('/api/v1/tracker');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(mockSurveyData);
     

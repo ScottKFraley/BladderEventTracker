@@ -1,7 +1,8 @@
 // auth.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, Inject } from '@angular/core';
+import { TOKEN_REFRESH_THRESHOLD } from './auth.config';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, throwError, Subscription } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
@@ -23,27 +24,34 @@ export class AuthService {
   private readonly AUTH_API = '/api/auth';
   private readonly TOKEN_KEY = 'auth_token';
   private readonly TOKEN_EXPIRY_KEY = 'auth_token_expiry';
-  private readonly TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private tokenExpiryTimer: any;
+  private refreshTimer: any;
+  private subscriptions = new Subscription();
+
 
   constructor(
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    @Inject(TOKEN_REFRESH_THRESHOLD) private readonly tokenRefreshThreshold: number = 300000
   ) {
     this.checkAuthStatus();
   }
 
-  // export class YourService {
-  //   private apiUrl = environment.apiUrl;
+  ngOnDestroy() {
+    this.subscriptions.unsubscribe();
+    this.stopRefreshTimer();
+  }
 
-  //   constructor(private http: HttpClient) { }
-
-  //   getData() {
-  //     return this.http.get(`${this.apiUrl}/your-endpoint`);
-  //   }
-  // }
+  stopRefreshTimer() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.subscriptions.unsubscribe();
+    this.subscriptions = new Subscription();
+  }
 
   login(credentials: LoginDto): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.AUTH_API}/login`, credentials)
@@ -106,19 +114,22 @@ export class AuthService {
       const now = new Date().getTime();
       const timeUntilExpiry = expiryTime - now;
 
-      // Refresh token 5 minutes before expiry
-      const refreshTime = timeUntilExpiry - this.TOKEN_REFRESH_THRESHOLD;
+      // Clear any existing timers
+      this.stopRefreshTimer();
 
-      if (refreshTime > 0) {
-        this.tokenExpiryTimer = setTimeout(() => {
+      // Calculate refresh time using injected threshold
+      const timeUntilRefresh = timeUntilExpiry - this.tokenRefreshThreshold;
+
+      if (timeUntilRefresh > 0) {
+        this.refreshTimer = setTimeout(() => {
           this.refreshToken();
-        }, refreshTime);
+        }, timeUntilRefresh);
       }
     }
   }
 
   private refreshToken(): void {
-    this.http.post<AuthResponse>(`${this.AUTH_API}/token`, {})
+    const subscription = this.http.post<AuthResponse>(`${this.AUTH_API}/token`, {})
       .pipe(
         tap(response => this.handleSuccessfulAuth(response)),
         catchError(error => {
@@ -126,6 +137,33 @@ export class AuthService {
           return throwError(() => error);
         })
       ).subscribe();
+
+    // Store the subscription to be cleaned up later if needed
+    this.subscriptions.add(subscription);
+  }
+
+  // Decode the JWT in order to have the UserId, which is needed in order 
+  // to keep the data boxed in to just the user currently logged in!
+  private decodeToken(token: string): any {
+    try {
+      // JWT tokens are base64 encoded in three parts: header.payload.signature
+      const payload = token.split('.')[1];
+      const decodedPayload = JSON.parse(atob(payload));
+
+      return decodedPayload;
+
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  }
+
+  getCurrentUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const decodedToken = this.decodeToken(token);
+    return decodedToken?.id || null;
   }
 
   private handleError(error: HttpErrorResponse) {

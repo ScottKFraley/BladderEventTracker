@@ -1,0 +1,11 @@
+<div class="admin-config">
+    <h2>Dashboard Configuration</h2>
+    <div class="config-item">
+        <label for="daysPrevious">Number of Previous Days to Display:</label>
+        <input type="number" id="daysPrevious" [ngModel]="currentDays()" (ngModelChange)="updateDays($event)" min="1"
+            max="30">
+    </div>
+    <div class="save-status" *ngIf="saveStatus()" [class]="saveStatus()">
+        {{ saveStatus() }}
+    </div>
+</div>

@@ -12,6 +12,7 @@ database/backup.sql
 **/*.sql
 **/*.psql
 **/*.pgsql
+**/*.csv
 
 # DO NOT check in ANYTHING in the .venv folder(s)
 **/venv/
