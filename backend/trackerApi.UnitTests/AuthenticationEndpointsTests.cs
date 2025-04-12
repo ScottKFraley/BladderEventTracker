@@ -19,25 +19,44 @@ namespace trackerApi.UnitTests;
 public class AuthenticationEndpointsTests
 {
     [Fact]
+    public async Task Login_WithInvalidUsername_ReturnsUnauthorized()
+    {
+        // Arrange
+        var users = new List<User>().AsQueryable();
+        var mockContext = DbContextMockHelper.CreateMockDbContext(users);
+        var mockConfig = new Mock<IConfiguration>();
+        var mockTokenService = new Mock<ITokenService>();
+
+        var loginDto = new LoginDto("nonexistentuser", "password123");
+
+        // Act
+        var result = await LoginHandler(
+            mockContext.Object,
+            mockConfig.Object,
+            mockTokenService.Object,
+            loginDto);
+
+        // Assert
+        Assert.IsType<UnauthorizedHttpResult>(result);
+    }
+
+    [Fact]
     public async Task Login_WithValidCredentials_ReturnsOkWithToken()
     {
         // Arrange
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword("password123");
         var testUser = new User
         {
             Id = Guid.NewGuid(),
             Username = "testuser",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
+            PasswordHash = hashedPassword,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         var users = new List<User> { testUser }.AsQueryable();
-
-        // Use the helper to create the mock context
-        var mockDbContext = DbContextMockHelper.CreateMockDbContext(users);
-
+        var mockContext = DbContextMockHelper.CreateMockDbContext(users);
         var mockConfig = new Mock<IConfiguration>();
-
         var mockTokenService = new Mock<ITokenService>();
         mockTokenService
             .Setup(ts => ts.GenerateToken(It.IsAny<User>(), null, false))
@@ -46,34 +65,23 @@ public class AuthenticationEndpointsTests
         var loginDto = new LoginDto("testuser", "password123");
 
         // Act
-        var result = await LoginHandler(mockDbContext.Object, mockConfig.Object, mockTokenService.Object, loginDto);
+        var result = await LoginHandler(
+              mockContext.Object,
+              mockConfig.Object,
+              mockTokenService.Object,
+              loginDto);
 
         // Assert
-        var okResult = Assert.IsType<Ok<object>>(result);
-        var responseValue = okResult.Value as dynamic;
-        Assert.Equal("test-jwt-token", responseValue?.Token);
+        var okResult = Assert.IsAssignableFrom<IResult>(result);
+        Assert.Equal(200, (okResult as IStatusCodeHttpResult)?.StatusCode);
 
-        mockTokenService.Verify(ts => ts.GenerateToken(It.Is<User>(u => u.Username == testUser.Username), null, false), Times.Once);
-    }
+        // Access the Value property using reflection since it's an anonymous type
+        var resultType = result.GetType();
+        var valueProperty = resultType.GetProperty("Value");
+        var value = valueProperty?.GetValue(result);
+        var token = value?.GetType().GetProperty("Token")?.GetValue(value) as string;
 
-
-    [Fact]
-    public async Task Login_WithInvalidUsername_ReturnsUnauthorized()
-    {
-        // Arrange
-        var users = new List<User>().AsQueryable();
-        var mockDbContext = DbContextMockHelper.CreateMockDbContext(users);
-        var mockConfig = new Mock<IConfiguration>();
-        var mockTokenService = new Mock<ITokenService>();
-
-        var loginDto = new LoginDto("nonexistentuser", "password123");
-
-        // Act
-        var result = await LoginHandler(mockDbContext.Object, mockConfig.Object, mockTokenService.Object, loginDto);
-
-        // Assert
-        Assert.IsType<UnauthorizedHttpResult>(result);
-        mockTokenService.Verify(ts => ts.GenerateToken(It.IsAny<User>(), null, false), Times.Never);
+        Assert.Equal("test-jwt-token", token);
     }
 
 

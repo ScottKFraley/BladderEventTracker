@@ -1,64 +1,164 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore.Query;
 
 using Moq;
+
+using System.Linq.Expressions;
 
 using trackerApi.DbContext;
 
 namespace trackerApi.TestUtils;
 
+/// <summary>
+/// See the bof for more info.
+/// </summary>
 public static class DbContextMockHelper
 {
-    public static Mock<AppDbContext> CreateMockDbContext<TEntity>(IQueryable<TEntity> data)
-        where TEntity : class
+    public static Mock<AppDbContext> CreateMockDbContext<TEntity>(IQueryable<TEntity> data) where TEntity : class
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+        var mockContext = new Mock<AppDbContext>();
+        var mockSet = new Mock<DbSet<TEntity>>();
 
-        var loggerMock = new Mock<ILogger<AppDbContext>>();
+        mockSet.As<IQueryable<TEntity>>()
+            .Setup(m => m.Provider)
+            .Returns(new TestAsyncQueryProvider<TEntity>(data.Provider, data));
 
-        var mockContext = new Mock<AppDbContext>(
-            MockBehavior.Loose,
-            options,
-            loggerMock.Object
-        );
+        mockSet.As<IQueryable<TEntity>>()
+            .Setup(m => m.Expression)
+            .Returns(data.Expression);
 
-        var mockSet = CreateMockDbSet(data);
-        mockContext.Setup(c => c.Set<TEntity>()).Returns(mockSet.Object);
+        mockSet.As<IQueryable<TEntity>>()
+            .Setup(m => m.ElementType)
+            .Returns(data.ElementType);
+
+        mockSet.As<IQueryable<TEntity>>()
+            .Setup(m => m.GetEnumerator())
+            .Returns(data.GetEnumerator());
+
+        mockContext.Setup(c => c.Set<TEntity>())
+            .Returns(mockSet.Object);
 
         return mockContext;
     }
+}
 
-    private static Mock<DbSet<T>> CreateMockDbSet<T>(IQueryable<T> data) where T : class
+public class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
+{
+    private readonly IQueryProvider _inner;
+    private readonly IQueryable<TEntity> _data;
+
+    public TestAsyncQueryProvider(IQueryProvider inner, IQueryable<TEntity> data)
     {
-        var mockDbSet = new Mock<DbSet<T>>();
+        _inner = inner;
+        _data = data;
+    }
 
-        mockDbSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(data.Provider);
-        mockDbSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
-        mockDbSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
-        mockDbSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => data.GetEnumerator());
+    public IQueryable CreateQuery(Expression expression)
+    {
+        return new TestAsyncEnumerable<TEntity>(_data);
+    }
 
-        // Setup async operations
-        mockDbSet.Setup(m => m.FindAsync(It.IsAny<object[]>()))
-            .ReturnsAsync((object[] ids) =>
+    public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
+    {
+        return new TestAsyncEnumerable<TElement>(_data.Cast<TElement>());
+    }
+
+    public object? Execute(Expression expression)
+    {
+        return _inner.Execute(expression);
+    }
+
+    public TResult Execute<TResult>(Expression expression)
+    {
+        return _inner.Execute<TResult>(expression);
+    }
+
+    public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Expression expression)
+    {
+        var result = Execute<IEnumerable<TResult>>(expression);
+        return new TestAsyncEnumerable<TResult>(result.AsQueryable());
+    }
+
+    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
+    {
+        if (expression is MethodCallExpression methodCall &&
+            methodCall.Method.Name == "FirstOrDefault")
+        {
+            // Get the type argument of Task<T>
+            var resultType = typeof(TResult).GetGenericArguments()[0];
+
+            // Handle FirstOrDefaultAsync
+            if (methodCall.Arguments.Count > 1)
             {
-                // This runs as actual code, not as an expression tree
-                foreach (var item in data)
-                {
-                    var idProperty = typeof(T).GetProperty("Id");
-                    if (idProperty != null)
-                    {
-                        var itemId = idProperty.GetValue(item);
-                        if (itemId != null && itemId.Equals(ids[0]))
-                        {
-                            return item;
-                        }
-                    }
-                }
-                return null;
-            });
+                var predicate = (Expression<Func<TEntity, bool>>)((UnaryExpression)methodCall.Arguments[1]).Operand;
+                var result = _data.FirstOrDefault(predicate);
+                var taskResult = typeof(Task)
+                    .GetMethod(nameof(Task.FromResult))!
+                    .MakeGenericMethod(resultType)
+                    .Invoke(null, new object?[] { result });
+                return (TResult)taskResult!;
+            }
+            else
+            {
+                var result = _data.FirstOrDefault();
+                var taskResult = typeof(Task)
+                    .GetMethod(nameof(Task.FromResult))!
+                    .MakeGenericMethod(resultType)
+                    .Invoke(null, new object?[] { result });
+                return (TResult)taskResult!;
+            }
+        }
 
-        return mockDbSet;
+        // For other cases, fall back to regular execution
+        var regularResult = Execute<TResult>(expression);
+        return regularResult;
+    }
+}
+
+
+public class TestAsyncEnumerable<T> : IAsyncEnumerable<T>, IQueryable<T>
+{
+    private readonly IQueryable<T> _inner;
+
+    public TestAsyncEnumerable(IQueryable<T> inner)
+    {
+        _inner = inner;
+    }
+
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    {
+        return new TestAsyncEnumerator<T>(_inner.GetEnumerator());
+    }
+
+    public Type ElementType => _inner.ElementType;
+    public Expression Expression => _inner.Expression;
+    public IQueryProvider Provider => new TestAsyncQueryProvider<T>(_inner.Provider, _inner);
+
+    public IEnumerator<T> GetEnumerator() => _inner.GetEnumerator();
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public class TestAsyncEnumerator<T> : IAsyncEnumerator<T>
+{
+    private readonly IEnumerator<T> _inner;
+
+    public TestAsyncEnumerator(IEnumerator<T> inner)
+    {
+        _inner = inner;
+    }
+
+    public T Current => _inner.Current;
+
+    public ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        _inner.Dispose();
+
+        return new ValueTask();
+    }
+
+    public ValueTask<bool> MoveNextAsync()
+    {
+        return new ValueTask<bool>(_inner.MoveNext());
     }
 }
