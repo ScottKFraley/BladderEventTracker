@@ -17,6 +17,12 @@ public class AppDbContext : DbContext
         _logger.LogInformation("DbContext instance created");
     }
 
+    protected AppDbContext()
+    {
+        _logger = new LoggerFactory().CreateLogger<AppDbContext>();
+        _logger.LogInformation("DbContext instance created");
+    }
+
     public DbSet<Models.TrackingLogItem> TrackingLogs { get; set; }
 
     public DbSet<User> Users { get; set; }

@@ -10,7 +10,7 @@ public static class AuthenticationEndpoints
 {
     public static void MapAuthEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/auth/login", async (
+        app.MapPost("/api/v1/auth/login", async (
             AppDbContext context,
             IConfiguration config,
             ITokenService tokenService,
@@ -32,7 +32,7 @@ public static class AuthenticationEndpoints
         .WithOpenApi();
 
         // see GenerateToken() method below
-        app.MapPost("/api/auth/token", GenerateToken)
+        app.MapPost("/api/v1/auth/token", GenerateToken)
             .WithName("GenerateToken")
             .WithOpenApi();
 
