@@ -10,9 +10,11 @@ import { configReducer } from './state/config/config.reducer';
 import { ConfigEffects } from './state/config/config.effects';
 import { trackingLogReducer } from './state/tracking-logs/tracking-log.reducer';
 import { TrackingLogEffects } from './state/tracking-logs/tracking-log.effects';
+import { TOKEN_REFRESH_THRESHOLD } from './auth/auth.config';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: TOKEN_REFRESH_THRESHOLD, useValue: 300000 },
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([authInterceptor])
