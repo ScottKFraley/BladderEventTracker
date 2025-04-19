@@ -1,3 +1,7 @@
-<div>
-    <survey [model]="surveyModel!"></survey>
+<div class="survey-container">
+    <button (click)="toggleAdditionalFields()" class="toggle-button">
+        {{ showAdditionalFields ? 'Hide' : 'Show' }} Additional Fields
+    </button>
+
+    <survey [model]="surveyModel"></survey>
 </div>

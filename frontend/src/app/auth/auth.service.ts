@@ -146,14 +146,15 @@ export class AuthService {
   // to keep the data boxed in to just the user currently logged in!
   private decodeToken(token: string): any {
     try {
-      // JWT tokens are base64 encoded in three parts: header.payload.signature
       const payload = token.split('.')[1];
       const decodedPayload = JSON.parse(atob(payload));
+      console.log('Decoded token payload:', decodedPayload); // Add this line temporarily
 
       return decodedPayload;
-
+      
     } catch (error) {
       console.error('Error decoding token:', error);
+
       return null;
     }
   }
@@ -163,7 +164,11 @@ export class AuthService {
     if (!token) return null;
 
     const decodedToken = this.decodeToken(token);
-    return decodedToken?.id || null;
+    // Check for both possible claim formats
+    return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+      decodedToken?.nameidentifier ||
+      decodedToken?.id ||
+      null;
   }
 
   private handleError(error: HttpErrorResponse) {

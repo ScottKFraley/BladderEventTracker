@@ -27,8 +27,8 @@ def yesNo_to_bool(input_text):
 def format_datetime(date_str, time_str):
     # Parse date and time from the format in the CSV
     try:
-        # Parse the date (format: M/D/YYYY)
-        date_obj = datetime.strptime(date_str, "%m/%d/%Y")
+        # Parse the date (format: M/D/YYYY)  "%Y-%m-%d"
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         
         # Parse the time (format: H:MM or HH:MM)
         time_parts = time_str.split(':')
@@ -37,10 +37,14 @@ def format_datetime(date_str, time_str):
         
         # Combine date and time
         combined = datetime(date_obj.year, date_obj.month, date_obj.day, hour, minute)
+        
         return combined.isoformat()
+    
     except Exception as e:
         print(f"Error parsing date/time: {date_str} {time_str} - {str(e)}")
+        
         return None
+    
 
 def start_parsing_datafile(input_file):
     try:
