@@ -5,6 +5,7 @@ import { AuthService, LoginDto, AuthResponse } from './auth.service';
 import { Router } from '@angular/router';
 import { Component } from '@angular/core';
 import { TOKEN_REFRESH_THRESHOLD } from './auth.config';
+import { ApiEndpointsService } from '../services/api-endpoints.service';
 
 
 @Component({
@@ -16,6 +17,16 @@ describe('AuthService', () => {
     let service: AuthService;
     let httpMock: HttpTestingController;
     let router: Router;
+    let apiEndpoints: ApiEndpointsService;
+
+    // Mock API endpoints
+    const mockApiEndpoints = {
+        getAuthEndpoints: () => ({
+            base: '/api/auth',
+            login: '/api/auth/login',
+            refresh: '/api/auth/token'
+        })
+    };
 
     const mockCredentials: LoginDto = {
         username: 'testuser',
@@ -35,13 +46,15 @@ describe('AuthService', () => {
             declarations: [MockDashboardComponent],
             providers: [
                 AuthService,
-                { provide: TOKEN_REFRESH_THRESHOLD, useValue: 1000 } // Add this line
+                { provide: TOKEN_REFRESH_THRESHOLD, useValue: 1000 },
+                { provide: ApiEndpointsService, useValue: mockApiEndpoints }
             ]
         });
 
         service = TestBed.inject(AuthService);
         httpMock = TestBed.inject(HttpTestingController);
         router = TestBed.inject(Router);
+        apiEndpoints = TestBed.inject(ApiEndpointsService);
 
         // Clear localStorage before each test
         localStorage.clear();
@@ -115,97 +128,40 @@ describe('AuthService', () => {
     });
 
     describe('token management', () => {
-        const mockCredentials: LoginDto = {
-            username: 'testuser',
-            password: 'testpass'
-        };
-    
         it('should setup token expiry timer on successful auth', fakeAsync(() => {
             // Arrange
             const mockResponse: AuthResponse = { token: 'new-token' };
-            
+
             // Act - Login
             service.login(mockCredentials).subscribe();
-            const loginReq = httpMock.expectOne(`${service['AUTH_API']}/login`);
+            const loginReq = httpMock.expectOne(apiEndpoints.getAuthEndpoints().login);
             loginReq.flush(mockResponse);
-    
+
             // Get the expiry time that was set
-            const expiry = parseInt(localStorage.getItem(service['TOKEN_EXPIRY_KEY']) || '0', 10);
-            const timeUntilRefresh = expiry - Date.now() - 1000; // Using the 1000ms threshold
-    
+            const expiry = parseInt(localStorage.getItem('auth_token_expiry') || '0', 10);
+            const timeUntilRefresh = expiry - Date.now() - 1000;
+
             // Fast-forward to just before refresh
             tick(timeUntilRefresh);
-    
+
             // Handle the refresh token request
-            const refreshReq = httpMock.expectOne(`${service['AUTH_API']}/token`);
+            const refreshReq = httpMock.expectOne(apiEndpoints.getAuthEndpoints().refresh);
             expect(refreshReq.request.method).toBe('POST');
             refreshReq.flush({ token: 'refreshed-token' });
-    
-            // Allow any pending operations to complete
+
             tick();
-    
-            // Assertions
-            expect(localStorage.getItem(service['TOKEN_KEY'])).toBe('refreshed-token');
-    
-            // Clean up
+
+            expect(localStorage.getItem('auth_token')).toBe('refreshed-token');
+
             service.stopRefreshTimer();
             flush();
             discardPeriodicTasks();
         }));
-    
-        afterEach(() => {
-            service.stopRefreshTimer();
-            localStorage.clear();
-            httpMock.verify();
-        });
     });
-    
-    // describe('token management', () => {
-    //     const mockCredentials: LoginDto = {
-    //         username: 'testuser',
-    //         password: 'testpass'
-    //     };
 
-    //     it('should setup token expiry timer on successful auth', fakeAsync(() => {
-    //         // Arrange
-    //         const mockResponse: AuthResponse = { token: 'new-token' };
-
-    //         // Act
-    //         service.login(mockCredentials).subscribe();
-
-    //         // Handle initial login request
-    //         const loginReq = httpMock.expectOne('/api/auth/login');
-    //         loginReq.flush(mockResponse);
-
-    //         // Get the expiry time that was set
-    //         const expiryTime = parseInt(localStorage.getItem('auth_token_expiry') || '0', 10);
-    //         const now = new Date().getTime();
-    //         const timeUntilRefresh = (expiryTime - now) - service['TOKEN_REFRESH_THRESHOLD'];
-
-    //         // Fast-forward time to when the refresh should happen
-    //         tick(timeUntilRefresh);
-
-    //         // Handle the refresh request
-    //         const refreshReq = httpMock.expectOne('/api/auth/token');
-    //         expect(refreshReq.request.method).toBe('POST');
-    //         refreshReq.flush({ token: 'refreshed-token' });
-
-    //         // Complete all pending asynchronous operations
-    //         tick();
-
-    //         // Verify the token was updated
-    //         expect(localStorage.getItem('auth_token')).toBe('refreshed-token');
-
-    //         // Clean up any remaining timers and complete the test
-    //         service.stopRefreshTimer();
-    //         discardPeriodicTasks();
-    //         flush();
-    //     }));
-
-    //     afterEach(() => {
-    //         // Clean up timers after each test
-    //         service.stopRefreshTimer();
-    //     });
-    // });
-
+    afterEach(() => {
+        service.stopRefreshTimer();
+        localStorage.clear();
+        httpMock.verify();
+    });
 });

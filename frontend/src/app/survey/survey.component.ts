@@ -44,7 +44,7 @@ export class SurveyComponent implements OnInit {
           { value: 4, text: "4 - Emergency level urgency" }
         ],
         isRequired: true,
-        defaultValue: 0
+        defaultValue: 1
       },
       {
         type: "boolean",
@@ -57,6 +57,7 @@ export class SurveyComponent implements OnInit {
         type: "rating",
         name: "PainLevel",
         title: "Pain Level (0-10)",
+        rateMin: 0,
         rateMax: 10,
         minRateDescription: "No Pain (0)",
         maxRateDescription: "Worst Pain (10)",

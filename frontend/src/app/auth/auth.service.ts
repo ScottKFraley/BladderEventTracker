@@ -5,8 +5,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError, Subscription } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { environment } from '../../environments/environment';
-
+// import { environment } from '../../environments/environment';
+import { ApiEndpointsService } from '../services/api-endpoints.service';
 
 export interface LoginDto {
   username: string;
@@ -21,7 +21,6 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly AUTH_API = '/api/v1/auth';
   private readonly TOKEN_KEY = 'auth_token';
   private readonly TOKEN_EXPIRY_KEY = 'auth_token_expiry';
 
@@ -34,6 +33,7 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private apiEndpoints: ApiEndpointsService,
     @Inject(TOKEN_REFRESH_THRESHOLD) private readonly tokenRefreshThreshold: number = 300000
   ) {
     this.checkAuthStatus();
@@ -54,11 +54,13 @@ export class AuthService {
   }
 
   login(credentials: LoginDto): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.AUTH_API}/login`, credentials)
-      .pipe(
-        tap(response => this.handleSuccessfulAuth(response)),
-        catchError(this.handleError)
-      );
+    return this.http.post<AuthResponse>(
+      this.apiEndpoints.getAuthEndpoints().login,
+      credentials
+    ).pipe(
+      tap(response => this.handleSuccessfulAuth(response)),
+      catchError(this.handleError)
+    );
   }
 
   logout(): void {
@@ -129,16 +131,17 @@ export class AuthService {
   }
 
   private refreshToken(): void {
-    const subscription = this.http.post<AuthResponse>(`${this.AUTH_API}/token`, {})
-      .pipe(
-        tap(response => this.handleSuccessfulAuth(response)),
-        catchError(error => {
-          this.logout();
-          return throwError(() => error);
-        })
-      ).subscribe();
+    const subscription = this.http.post<AuthResponse>(
+      this.apiEndpoints.getAuthEndpoints().refresh, 
+      {}
+    ).pipe(
+      tap(response => this.handleSuccessfulAuth(response)),
+      catchError(error => {
+        this.logout();
+        return throwError(() => error);
+      })
+    ).subscribe();
 
-    // Store the subscription to be cleaned up later if needed
     this.subscriptions.add(subscription);
   }
 
@@ -151,7 +154,7 @@ export class AuthService {
       console.log('Decoded token payload:', decodedPayload); // Add this line temporarily
 
       return decodedPayload;
-      
+
     } catch (error) {
       console.error('Error decoding token:', error);
 

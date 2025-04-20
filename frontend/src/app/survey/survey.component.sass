@@ -5,10 +5,10 @@
   margin: 0 auto
 
   .survey-container
-    margin-top: 1rem
+    margin-top: 0.5rem
 
   .toggle-button
-    margin-bottom: 1rem
+    margin-bottom: 0.2rem
     padding: 0.5rem 1rem
     background-color: #f0f0f0
     border: 1px solid #ccc
@@ -25,12 +25,78 @@
       transform: translateY(0)
       box-shadow: none
 
-    // Optional: Add focus state for accessibility
     &:focus
       outline: 2px solid #007bff
       outline-offset: 2px
 
-  // Optional: Add some spacing between the button and survey
   survey
       display: block
       margin-top: 1.5rem
+
+::ng-deep
+  // Main survey title only
+  .sd-container-modern__title .sv-string-viewer
+    color: #2c3e50 !important
+    font-size: 28px !important
+    font-weight: bold !important
+    margin: 0 0 1rem 0 !important  // Reduced from 2rem to 1rem
+    text-align: center !important
+    font-variant: small-caps !important
+    letter-spacing: 1px !important
+
+  // Additional styles to ensure proper title container styling
+  .sd-container-modern__title
+    box-shadow: none !important
+    padding: 0.5rem !important  // Reduced from 1rem to 0.5rem
+    margin-bottom: 1rem !important  // Reduced from 2rem to 1rem
+    background-color: transparent !important
+
+  h3.sd-title
+    margin: 0 !important
+    padding: 0 !important
+
+  // Question titles and other elements
+  .sv-question__title .sv-string-viewer
+    color: #2c3e50 !important
+    font-size: 16px !important
+    font-weight: normal !important
+    margin-bottom: 0.5rem !important
+    text-align: left !important
+    font-variant: normal !important
+    letter-spacing: normal !important
+
+  // Make sure form elements are properly spaced and aligned
+  .sv-question
+    margin-bottom: 1.5rem !important
+    padding: 0.5rem !important
+
+    // Responsive adjustments
+    @media (min-width: 768px)
+      width: 100% !important
+      clear: both !important
+
+  // Ensure proper spacing between options
+  .sv-question__content
+    margin-top: 0.5rem !important
+
+  // Ensure radio buttons and checkboxes align properly
+  .sv-item
+    display: flex !important
+    align-items: center !important
+    margin: 0.5rem 0 !important
+
+  // Ensure input fields have consistent width
+  input[type="text"],
+  input[type="number"]
+    width: 100% !important
+    max-width: 400px !important
+    padding: 0.5rem !important
+
+    @media (min-width: 768px)
+      width: 50% !important
+
+  // Keep select dropdowns consistent across all screen sizes
+  select
+    width: 100% !important
+    max-width: 400px !important
+    padding: 0.5rem !important

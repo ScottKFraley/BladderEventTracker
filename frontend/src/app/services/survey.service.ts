@@ -4,7 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { SurveyResponse } from '../models/survey-response-model';
 import { AuthService } from '../auth/auth.service';
-
+import { ApiEndpointsService } from './api-endpoints.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,8 +12,7 @@ import { AuthService } from '../auth/auth.service';
 export class SurveyService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
-  // TODO: this REALLY should come from a config file or something. Why isn't it coming from the 
-  private readonly apiUrl = '/api/v1/tracker';
+  private apiEndpoints = inject(ApiEndpointsService);
 
   submitSurvey(surveyData: SurveyResponse): Observable<any> {
     const userId = this.authService.getCurrentUserId();
@@ -27,7 +26,10 @@ export class SurveyService {
       userId: userId
     };
     
-    return this.http.post(this.apiUrl, enrichedData).pipe(
+    return this.http.post(
+      this.apiEndpoints.getTrackerEndpoints().base,
+      enrichedData
+    ).pipe(
       catchError(error => {
         console.error('Survey submission error:', error);
         return throwError(() => new Error(error.error?.message || 'Failed to submit survey'));

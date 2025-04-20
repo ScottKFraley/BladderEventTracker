@@ -1,13 +1,14 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { TrackingLogModel } from '../models/tracking-log.model';
 import { TrackingLogService } from '../services/tracking-log.service';
+
 
 @Component({
   selector: 'app-tracking-log-detail',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, RouterModule],
   templateUrl: './tracking-log-detail.component.html',
 })
 export class TrackingLogDetailComponent implements OnInit {

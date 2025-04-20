@@ -1,4 +1,4 @@
-<h2>Tracking Log Details</h2>
+<h2>Tracking Log Entry Details</h2>
 
 @if (trackingLogSig()) {
   <table>
@@ -14,3 +14,7 @@
 } @else {
   <p>No tracking log details available.</p>
 }
+
+<a routerLink="/dashboard" class="btn btn-secondary mt-4">
+  <i class="fa-solid fa-arrow-left me-2"></i> Back to Dashboard
+</a>
