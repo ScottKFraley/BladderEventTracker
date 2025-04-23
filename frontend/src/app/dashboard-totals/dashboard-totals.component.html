@@ -1,1 +1,28 @@
-<p>dashboard-totals works!</p>
+<div class="dashboard-totals">
+    <div class="metric-grid">
+        <div class="metric-card">
+            <h3>Average Pain Level</h3>
+            <p class="metric-value">{{ averagePainLevel$ | async | number:'1.1-1' }}</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>Average Urgency Level</h3>
+            <p class="metric-value">{{ averageUrgencyLevel$ | async | number:'1.1-1' }}</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>Total Logs</h3>
+            <p class="metric-value">{{ (trackingLogs$ | async)?.length || 0 }}</p>
+        </div>
+    </div>
+
+    <div class="daily-breakdown" *ngIf="dailyLogCounts$ | async as counts">
+        <h3>Daily Log Counts</h3>
+        <div class="daily-counts">
+            <div class="count-item" *ngFor="let entry of counts | keyvalue">
+                <span class="date">{{ entry.key }}</span>
+                <span class="count">{{ entry.value }} logs</span>
+            </div>
+        </div>
+    </div>
+</div>

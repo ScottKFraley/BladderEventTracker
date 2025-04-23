@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, concatMap } from 'rxjs/operators';
+import { catchError, map, concatMap, tap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { TrackingLogActions } from './tracking-log.actions';
 import { TrackingLogService } from '../../services/tracking-log.service';
@@ -19,6 +19,17 @@ export class TrackingLogEffects {
       )
     );
   });
+
+  // Optional: Handle errors
+  handleErrors$ = createEffect(() => {
+    return this.actions$.pipe(
+      ofType(TrackingLogActions.loadTrackingLogsFailure),
+      tap(({ error }) => {
+        console.error('Failed to load tracking logs:', error);
+        // You could add a call to a notification service here
+      })
+    );
+  }, { dispatch: false });
 
   constructor(
     private actions$: Actions,
