@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, concatMap, tap } from 'rxjs/operators';
+import { catchError, map, concatMap, tap, mergeMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { TrackingLogActions } from './tracking-log.actions';
 import { TrackingLogService } from '../../services/tracking-log.service';
@@ -10,13 +10,16 @@ export class TrackingLogEffects {
   loadTrackingLogs$ = createEffect(() => {
     return this.actions$.pipe(
       ofType(TrackingLogActions.loadTrackingLogs),
-      concatMap((action) =>
-        this.trackingLogService.getTrackingLogs(action.numDays, action.userId).pipe(
-          map(trackingLogs => TrackingLogActions.loadTrackingLogsSuccess({ trackingLogs })),
-          catchError(error =>
-            of(TrackingLogActions.loadTrackingLogsFailure({ error: error.message })))
-        )
-      )
+      tap(action => console.log('Effect received action:', action)), // Log the action
+      mergeMap(({ numDays, userId }) =>
+        this.trackingLogService.getTrackingLogs(numDays, userId).pipe(
+          tap(logs => console.log('API Response:', logs)), // Log the API response
+          map(logs => TrackingLogActions.loadTrackingLogsSuccess({ trackingLogs: logs })),
+          catchError(error => {
+            console.error('Effect error:', error);
+            return of(TrackingLogActions.loadTrackingLogsFailure({ error }))
+          })
+        ))
     );
   });
 

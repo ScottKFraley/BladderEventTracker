@@ -4,5 +4,6 @@ namespace trackerApi.Services;
 
 public interface ITokenService
 {
-    string GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false);
+    //string GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false);
+    Task<string> GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false);
 }

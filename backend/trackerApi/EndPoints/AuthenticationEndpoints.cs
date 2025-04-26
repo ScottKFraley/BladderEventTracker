@@ -23,8 +23,8 @@ public static class AuthenticationEndpoints
                 {
                     return Results.Unauthorized();
                 }
-                //var token = GenerateJwtToken(user!, config);
-                var token = tokenService.GenerateToken(user: user);
+
+                var token = await tokenService.GenerateToken(user: user);
 
                 return Results.Ok(new { Token = token });
             })
@@ -69,7 +69,7 @@ public static class AuthenticationEndpoints
     /// <returns>
     /// An IResult instance containg a StatusCodes value.
     /// </returns>
-    public static IResult GenerateToken(
+    public static async Task<IResult> GenerateToken(
         HttpContext context,
         ITokenService tokenService)
     {
@@ -80,7 +80,7 @@ public static class AuthenticationEndpoints
             return Results.Unauthorized();
         }
 
-        var token = tokenService.GenerateToken(username: username);
+        var token = await tokenService.GenerateToken(username: username);
 
         return Results.Ok(new { token });
     }

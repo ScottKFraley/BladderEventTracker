@@ -26,13 +26,11 @@ try
     Log.Information("Starting web application");
     var builder = WebApplication.CreateBuilder(args);
 
-
     // Added to see what configuration sources are available
     foreach (var provider in (builder.Configuration as IConfigurationRoot).Providers)
     {
         Log.Information("Configuration provider: {ProviderType}", provider.GetType().Name);
     }
-
 
     // Check if we're running in Visual Studio by checking for the debugger
     // You can also use an environment variable if you prefer
@@ -153,10 +151,12 @@ try
     // Get the base connection string
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+    Log.Information("Connection string value: {ConnectionString}", connectionString ?? "null (not found!)");
+
     // Get the password from secrets
-    //var dbPassword = builder.Configuration["DbPassword"];
     var dbPassword = builder.Configuration["DbPassword"] ??
-                    builder.Configuration["PG_PASSWORD"];
+                    builder.Configuration["PG_PASSWORD"] ??
+                    builder.Configuration["DB_PASSWORD"];
 
     Log.Information("Connection string before password: {ConnectionString}",
         connectionString?.Replace(dbPassword ?? "", "[REDACTED]"));
@@ -276,7 +276,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Application terminated unexpectedly: {ErrorMessage}", ex.Message);
+    Log.Fatal(ex, "Application terminated unexpectedly: {ErrorMessage}\r\n{StackTrace}", ex.Message, ex.StackTrace);
     // You might want to include inner exception details
     if (ex.InnerException != null)
     {

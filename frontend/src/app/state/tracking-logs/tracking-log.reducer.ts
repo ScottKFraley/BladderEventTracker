@@ -22,9 +22,10 @@ export const trackingLogReducer = createReducer(
     ...state,
     loading: true
   })),
-  on(TrackingLogActions.loadTrackingLogsSuccess, (state, { trackingLogs }) =>
-    adapter.setAll(trackingLogs, { ...state, loading: false })
-  ),
+  on(TrackingLogActions.loadTrackingLogsSuccess, (state, { trackingLogs }) => {
+    console.log('Reducer receiving logs:', trackingLogs); // Log in reducer
+    return adapter.setAll(trackingLogs, { ...state, error: null });
+  }),
   on(TrackingLogActions.loadTrackingLogsFailure, (state, { error }) => ({
     ...state,
     error,

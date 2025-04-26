@@ -1,10 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Xunit;
-using System;
-using System.Linq;
-using System.Collections.Generic;
+using Moq;
 using trackerApi.Services;
 using trackerApi.Models;
 
@@ -13,6 +10,7 @@ namespace trackerApi.UnitTests;
 public class TokenServiceTests
 {
     private readonly IConfiguration _configuration;
+    private readonly Mock<IUserService> _mockUserService;
     private readonly TokenService _tokenService;
     private readonly User _testUser;
 
@@ -31,24 +29,33 @@ public class TokenServiceTests
             .AddInMemoryCollection(initialData)
             .Build();
 
-        _tokenService = new TokenService(_configuration);
+        // Setup mock user service
+        _mockUserService = new Mock<IUserService>();
+
+        // Initialize TokenService with both dependencies
+        _tokenService = new TokenService(_configuration, _mockUserService.Object);
 
         // Initialize test user with all required properties
         _testUser = new User
         {
-            Id = Guid.NewGuid(), // This would be set automatically, but we're being explicit
+            Id = Guid.NewGuid(),
             Username = "testuser",
-            PasswordHash = "hashedpassword123", // In real scenario this would be an actual hash
-            CreatedAt = DateTime.UtcNow, // This would be set automatically
-            UpdatedAt = DateTime.UtcNow  // This would be set automatically
+            PasswordHash = "hashedpassword123",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
+
+        // Setup mock user service to return test user when queried
+        _mockUserService
+            .Setup(s => s.GetUserByUsername("testuser"))
+            .ReturnsAsync(_testUser);
     }
 
     [Fact]
-    public void GenerateToken_WithUser_ReturnsValidLoginToken()
+    public async Task GenerateToken_WithUser_ReturnsValidLoginToken()
     {
         // Act
-        var token = _tokenService.GenerateToken(user: _testUser);
+        var token = await _tokenService.GenerateToken(user: _testUser);
 
         // Assert
         Assert.NotNull(token);
@@ -71,10 +78,10 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_WithUsername_ReturnsValidRefreshToken()
+    public async Task GenerateToken_WithUsername_ReturnsValidRefreshToken()
     {
         // Act
-        var token = _tokenService.GenerateToken(username: "testuser");
+        var token = await _tokenService.GenerateToken(username: "testuser");
 
         // Assert
         Assert.NotNull(token);
@@ -85,6 +92,8 @@ public class TokenServiceTests
 
         // Verify claims
         var claims = jwtToken.Claims.ToList();
+        Assert.Contains(claims, c => c.Type == ClaimTypes.NameIdentifier &&
+                                    c.Value == _testUser.Id.ToString());
         Assert.Contains(claims, c => c.Type == ClaimTypes.Name &&
                                     c.Value == "testuser");
         Assert.Contains(claims, c => c.Type == JwtRegisteredClaimNames.Jti);
@@ -94,20 +103,23 @@ public class TokenServiceTests
         Assert.Equal("test-issuer", jwtToken.Issuer);
         Assert.Contains("test-audience", jwtToken.Audiences);
         Assert.True(jwtToken.ValidTo > DateTime.UtcNow);
+
+        // Verify the user service was called
+        _mockUserService.Verify(s => s.GetUserByUsername("testuser"), Times.Once);
     }
 
     [Fact]
-    public void GenerateToken_WithNoUserOrUsername_ThrowsArgumentException()
+    public async Task GenerateToken_WithNoUserOrUsername_ThrowsArgumentException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
             _tokenService.GenerateToken());
 
         Assert.Equal("Either user or username must be provided", exception.Message);
     }
 
     [Fact]
-    public void GenerateToken_ValidatesExpiration()
+    public async Task GenerateToken_ValidatesExpiration()
     {
         // Arrange
         var customConfigData = new[]
@@ -122,10 +134,10 @@ public class TokenServiceTests
             .AddInMemoryCollection(customConfigData)
             .Build();
 
-        var tokenService = new TokenService(customConfig);
+        var tokenService = new TokenService(customConfig, _mockUserService.Object);
 
         // Act
-        var token = tokenService.GenerateToken(user: _testUser);
+        var token = await tokenService.GenerateToken(user: _testUser);
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
 
@@ -135,20 +147,35 @@ public class TokenServiceTests
     }
 
     [Fact]
-    public void GenerateToken_WithInvalidConfiguration_ThrowsException()
+    public async Task GenerateToken_WithInvalidConfiguration_ThrowsException()
     {
         // Arrange
         var emptyConfig = new ConfigurationBuilder()
             .AddInMemoryCollection([])
             .Build();
 
-        var tokenService = new TokenService(emptyConfig);
+        var tokenService = new TokenService(emptyConfig, _mockUserService.Object);
 
         // Act & Assert
-        var exception = Assert.Throws<KeyNotFoundException>(() =>
+        var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
             tokenService.GenerateToken(user: _testUser));
 
         Assert.Equal("JwtSettings:SecretKey not found in appsettings.json", exception.Message);
+    }
+
+    [Fact]
+    public async Task GenerateToken_WithNonexistentUsername_ThrowsArgumentException()
+    {
+        // Arrange
+        _mockUserService
+            .Setup(s => s.GetUserByUsername("nonexistent"))
+            .ReturnsAsync((User?)null);  // Explicitly cast null to User?
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            _tokenService.GenerateToken(username: "nonexistent"));
+
+        Assert.Equal("User not found", exception.Message);
     }
 
 }

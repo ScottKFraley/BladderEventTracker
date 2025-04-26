@@ -24,19 +24,25 @@ export class DashboardComponent implements OnInit {
   trackingLogs$ = this.store.select(TrackingLogSelectors.selectAllTrackingLogs);
   error$ = this.store.select(TrackingLogSelectors.selectError);
 
-  constructor(private store: Store) {}
+  constructor(private store: Store) { }
 
   ngOnInit(): void {
     this.configService.getDaysPrevious().subscribe(numDays => {
       const userId = this.authService.getCurrentUserId();
+      console.log('Component init - userId:', userId, 'numDays:', numDays); // Added for debugging
       if (userId) {
         this.store.dispatch(
-          TrackingLogActions.loadTrackingLogs({ 
-            numDays, 
-            userId 
+          TrackingLogActions.loadTrackingLogs({
+            numDays,
+            userId
           })
         );
       }
+    });
+
+    // Added this subscription for debugging
+    this.trackingLogs$.subscribe(logs => {
+      console.log('Tracking logs from store:', logs);
     });
   }
 }

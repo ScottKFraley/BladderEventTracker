@@ -1,5 +1,5 @@
 ﻿# For PostgreSQL test container, create a Docker compose file for testing:
-# docker-compose.test.yml
+# docker-compose.db_test.yml
 
 services:
   db_test:

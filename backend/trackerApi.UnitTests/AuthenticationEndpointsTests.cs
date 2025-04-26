@@ -60,7 +60,7 @@ public class AuthenticationEndpointsTests
         var mockTokenService = new Mock<ITokenService>();
         mockTokenService
             .Setup(ts => ts.GenerateToken(It.IsAny<User>(), null, false))
-            .Returns("test-jwt-token");
+            .ReturnsAsync("test-jwt-token");
 
         var loginDto = new LoginDto("testuser", "password123");
 
@@ -86,26 +86,24 @@ public class AuthenticationEndpointsTests
 
 
     [Fact]
-    public void GenerateToken_WithValidUsername_ReturnsOkWithToken()
+    public async Task GenerateToken_WithValidUsername_ReturnsOkWithToken()
     {
         // Arrange
         var mockTokenService = new Mock<ITokenService>();
         mockTokenService
             .Setup(ts => ts.GenerateToken(It.IsAny<User>(), "testuser", false))
-            .Returns("test-jwt-token");
+            .ReturnsAsync("test-jwt-token");
 
         var httpContext = new DefaultHttpContext();
         var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, "testuser") }, "test");
         httpContext.User = new ClaimsPrincipal(identity);
 
         // Act
-        var result = AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
+        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
 
         // Assert
-        // Just confirm it's a 200 OK result
         Assert.Equal(200, GetStatusCodeFromResult(result));
 
-        // And that it contains the expected token
         var tokenValue = GetTokenFromResult(result);
         Assert.Equal("test-jwt-token", tokenValue);
 
@@ -145,7 +143,7 @@ public class AuthenticationEndpointsTests
             return Results.Unauthorized();
         }
 
-        var token = tokenService.GenerateToken(user: user);
+        var token = await tokenService.GenerateToken(user: user);
 
         return Results.Ok(new { Token = token });
     }

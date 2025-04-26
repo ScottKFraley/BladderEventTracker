@@ -22,6 +22,10 @@ export class ApiEndpointsService {
     refresh: `${this.baseUrl}/auth/token`,
   };
 
+  getByDaysAndUserEndpoint(days: number, userId: string) {
+    return this.trackerEndpoints.getByDaysAndUser(days, userId);
+  }
+
   getTrackerEndpoints() {
     return this.trackerEndpoints;
   }

@@ -18,13 +18,17 @@ namespace trackerApi.Services;
 public class TokenService : ITokenService
 {
     private readonly IConfiguration _configuration;
+    private readonly IUserService _userService;
 
-    public TokenService(IConfiguration configuration)
+    public TokenService(
+        IConfiguration configuration, 
+        IUserService userService)
     {
         _configuration = configuration;
+        _userService = userService;
     }
 
-    public string GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false)
+    public async Task<string> GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false)
     {
         GetSigningCredentials(_configuration, out IConfigurationSection jwtSettings, out SigningCredentials credentials);
 
@@ -38,7 +42,11 @@ public class TokenService : ITokenService
         }
         else if (!string.IsNullOrEmpty(username))
         {
-            // Claims for refresh token
+            // We need to look up the user by username to get their ID
+            var userFromDb = await _userService.GetUserByUsername(username) ?? throw new ArgumentException("User not found");
+
+            // Claims for refresh token - now including the NameIdentifier
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, userFromDb.Id.ToString()));
             claims.Add(new Claim(ClaimTypes.Name, username));
             claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
             claims.Add(new Claim(JwtRegisteredClaimNames.Iat,
@@ -50,6 +58,7 @@ public class TokenService : ITokenService
             throw new ArgumentException("Either user or username must be provided");
         }
 
+        // ... rest of the existing code ...
         var expirationMinutes = double.Parse(
             jwtSettings["ExpirationInMinutes"] ?? "60");
 

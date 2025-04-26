@@ -8,31 +8,35 @@
 <hr>
 
 <h2>Event Logs:</h2>
-@if (data().length > 0) {
-  <table>
-    <thead>
-      <tr>
-        <th class="col-sm-3 col-md-2 col-lg-1">Event Date</th>
-        <th class="col-sm-3 col-md-2 col-lg-1">Urgency</th>
-        <th class="col-sm-3 col-md-2 col-lg-1">Pain Level</th>
-        <th class="col-sm-8 col-md-8 col-lg-6">Notes</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (log of data(); track log.id) {
+@if (trackingLogs$ | async; as logs) {
+  @if (logs.length > 0) {
+    <table>
+      <thead>
         <tr>
-          <td>
-            <a [routerLink]="['/tracking-log-detail', log.id]">
-              {{ log.eventDate | date:'short' }}
-            </a>
-          </td>
-          <td>{{ log.urgency }}</td>
-          <td>{{ log.painLevel }}</td>
-          <td>{{ log.notes || 'None' }}</td>
+          <th class="col-sm-3 col-md-2 col-lg-1">Event Date</th>
+          <th class="col-sm-3 col-md-2 col-lg-1">Urgency</th>
+          <th class="col-sm-3 col-md-2 col-lg-1">Pain Level</th>
+          <th class="col-sm-8 col-md-8 col-lg-6">Notes</th>
         </tr>
-      }
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        @for (log of logs; track log.id) {
+          <tr>
+            <td>
+              <a [routerLink]="['/tracking-log-detail', log.id]">
+                {{ log.eventDate | date:'short' }}
+              </a>
+            </td>
+            <td>{{ log.urgency }}</td>
+            <td>{{ log.painLevel }}</td>
+            <td>{{ log.notes || 'None' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <p>No Records Found, or no records within the last two days.</p>
+  }
 } @else {
-  <p>No Records Found, or no records within the last two days.</p>
+  <p>Loading...</p>
 }

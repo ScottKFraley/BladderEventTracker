@@ -132,7 +132,7 @@ export class AuthService {
 
   private refreshToken(): void {
     const subscription = this.http.post<AuthResponse>(
-      this.apiEndpoints.getAuthEndpoints().refresh, 
+      this.apiEndpoints.getAuthEndpoints().refresh,
       {}
     ).pipe(
       tap(response => this.handleSuccessfulAuth(response)),
@@ -162,11 +162,25 @@ export class AuthService {
     }
   }
 
+  // getCurrentUserId(): string | null {
+  //   const token = this.getToken();
+  //   if (!token) return null;
+
+  //   const decodedToken = this.decodeToken(token);
+  //   // Check for both possible claim formats
+  //   return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+  //     decodedToken?.nameidentifier ||
+  //     decodedToken?.id ||
+  //     null;
+  // }
   getCurrentUserId(): string | null {
     const token = this.getToken();
     if (!token) return null;
 
     const decodedToken = this.decodeToken(token);
+    console.log('All available claims:', Object.keys(decodedToken)); // Add this line
+    console.log('Full decoded token:', decodedToken); // Add this line too
+
     // Check for both possible claim formats
     return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
       decodedToken?.nameidentifier ||
