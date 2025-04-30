@@ -4,9 +4,11 @@ using System.Security.Claims;
 using Moq;
 using trackerApi.Services;
 using trackerApi.Models;
+using System.Diagnostics.CodeAnalysis;
 
 namespace trackerApi.UnitTests;
 
+[ExcludeFromCodeCoverage]
 public class TokenServiceTests
 {
     private readonly IConfiguration _configuration;

@@ -8,11 +8,14 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using System.Diagnostics.CodeAnalysis;
+
 using trackerApi.EndPoints;
 using trackerApi.Models;
 using trackerApi.Services;
 using trackerApi.UnitTests.Fakers;
 
+[ExcludeFromCodeCoverage]
 public class TrackerEndpointsTests
 {
     private readonly Mock<ITrackingLogService> _mockTrackingService;

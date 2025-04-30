@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
+using System.Diagnostics.CodeAnalysis;
+
 using trackerApi.DbContext;
 using trackerApi.EndPoints;
 using trackerApi.Services;
@@ -11,6 +13,7 @@ using trackerApi.Services;
 namespace trackerApi.UnitTests;
 
 // Unit Tests
+[ExcludeFromCodeCoverage]
 public class AppDbContextUnitTests : IClassFixture<EnvironmentVariableFixture>
 {
     private readonly IConfiguration _testConfiguration;

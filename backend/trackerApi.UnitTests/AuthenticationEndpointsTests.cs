@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using Moq.EntityFrameworkCore;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 
 using trackerApi.DbContext;
@@ -16,6 +17,7 @@ using trackerApi.TestUtils;
 
 namespace trackerApi.UnitTests;
 
+[ExcludeFromCodeCoverage]
 public class AuthenticationEndpointsTests
 {
     [Fact]
@@ -112,7 +114,7 @@ public class AuthenticationEndpointsTests
 
 
     [Fact]
-    public void GenerateToken_WithNoUsername_ReturnsUnauthorized()
+    public async Task GenerateToken_WithNoUsername_ReturnsUnauthorized()
     {
         // Arrange
         var mockTokenService = new Mock<ITokenService>();
@@ -120,7 +122,7 @@ public class AuthenticationEndpointsTests
         // Not setting any claims - empty identity
 
         // Act
-        var result = AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
+        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
 
         // Assert
         Assert.IsType<UnauthorizedHttpResult>(result);
