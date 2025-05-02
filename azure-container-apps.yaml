@@ -1,0 +1,66 @@
+name: bladder-tracker
+location: eastus
+properties:
+  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.App/managedEnvironments/{environment-name}
+  configuration:
+    ingress:
+      external: true
+      targetPort: 4200
+    secrets:
+      - name: postgres-password
+        value: ${DB_PASSWORD}
+  template:
+    containers:
+      - name: frontend
+        image: ${REGISTRY_NAME}.azurecr.io/bladder-tracker/frontend:latest
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: BACKEND_API_URL
+            value: "http://backend"
+      - name: backend
+        image: ${REGISTRY_NAME}.azurecr.io/bladder-tracker/backend:latest
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: ASPNETCORE_ENVIRONMENT
+            value: "Production"
+          - name: PG_DATABASE
+            value: "BETrackingDb"
+          - name: PG_USER
+            value: "postgres"
+          - name: PG_HOST
+            value: "database"
+          - name: PG_PORT
+            value: "5432"
+          - name: PG_PASSWORD
+            secretRef: postgres-password
+      - name: database
+        image: postgres:15
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_PASSWORD
+            secretRef: postgres-password
+          - name: POSTGRES_DB
+            value: "BETrackingDb"
+        volumeMounts:
+          - name: postgres-data
+            mountPath: /var/lib/postgresql/data
+    volumes:
+      - name: postgres-data
+        storageType: AzureFile
+        storageName: postgres-storage
+    scale:
+      minReplicas: 0
+      maxReplicas: 5
+      rules:
+        - name: http-rule
+          http:
+            metadata:
+              concurrentRequests: "10"
