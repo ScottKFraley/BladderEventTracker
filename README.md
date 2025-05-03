@@ -147,7 +147,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ```bash
 cd frontend
-npm start
+npm start:dev
 ```
 
 #### Backend API
@@ -165,7 +165,7 @@ dotnet run
 
 ```bash
 cd frontend
-npm test
+ng test
 ```
 
 #### Backend Tests
@@ -209,7 +209,7 @@ The application is configured to deploy to Azure Container Apps with scale-to-ze
 az login
 
 # Create a resource group
-az group create --name bladder-tracker-rg --location eastus
+az group create --name bladder-tracker-rg --location westus
 
 # Create Azure Container Registry
 az acr create --resource-group bladder-tracker-rg --name bladdertracker --sku Basic --admin-enabled true

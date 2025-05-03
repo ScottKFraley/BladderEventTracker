@@ -99,6 +99,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnUpdate(); // Update on row modification (if supported)
+
+            // for IsAdmin
+            entity.Property(e => e.IsAdmin)
+                .HasDefaultValue(false);  // Sets default value to false for new users
         });
     }
 
@@ -115,7 +119,7 @@ public class AppDbContext : DbContext
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     private readonly IConfiguration? _configuration;
-    private readonly ILogger<AppDbContext> _logger;
+    private readonly ILogger<AppDbContext>? _logger;
 
     /// <summary>
     /// We need this parameterless constructor for migrations.
@@ -123,7 +127,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContextFactory()
     {
         _configuration = null;
-        _logger = null!;
+
+        // Create a default logger
+        _logger = new LoggerFactory().CreateLogger<AppDbContext>();
     }
 
     public AppDbContextFactory(ILogger<AppDbContext> logger, IConfiguration? configuration = null)
@@ -155,7 +161,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
 
-        return new AppDbContext(optionsBuilder.Options, this._logger);
+        // Create a default logger if _logger is null
+        var logger = _logger ?? new LoggerFactory().CreateLogger<AppDbContext>();
+
+        return new AppDbContext(optionsBuilder.Options, logger);
     }
 }
 

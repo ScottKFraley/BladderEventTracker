@@ -1,55 +1,66 @@
+@import '../../styles/variables'
+
 .dashboard-totals
-    padding: 1rem
+    padding: $spacing-sm
 
 .metric-grid
     display: grid
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))
-    gap: 1rem
-    margin-bottom: 2rem
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
+    gap: $spacing-sm
+    margin-bottom: $spacing-lg
 
 .metric-card
-    background: #ffffff
-    border-radius: 8px
-    padding: 1.5rem
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1)
-
-h3
-    margin: 0 0 0.5rem
-    color: #333
-    font-size: 1.1rem
+    background: $card-bg
+    border-radius: $card-radius
+    padding: $spacing-md
+    box-shadow: $card-shadow
+    transition: transform 0.2s, box-shadow 0.2s
+    
+    &:hover
+        transform: translateY(-2px)
+        box-shadow: $hover-shadow
+    
+    h3
+        margin: 0 0 $spacing-xs
+        color: $text-color
+        font-size: $font-size-sm
+        font-weight: 600
 
 .metric-value
-    font-size: 2rem
+    font-size: $font-size-lg
     font-weight: bold
-    color: #2c5282
+    color: $primary-color
     margin: 0
 
 .daily-breakdown
-    background: #ffffff
-    border-radius: 8px
-    padding: 1.5rem
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1)
-
-h3
-    margin: 0 0 1rem
-    color: #333
+    background: $card-bg
+    border-radius: $card-radius
+    padding: $spacing-md
+    box-shadow: $card-shadow
+    
+    h3
+        margin: 0 0 $spacing-sm
+        color: $text-color
+        font-size: $font-size-sm
+        font-weight: 600
 
 .daily-counts
     display: grid
-    gap: 0.5rem
+    gap: $spacing-xs
 
 .count-item
     display: flex
     justify-content: space-between
-    padding: 0.5rem
-    border-bottom: 1px solid #edf2f7
-
+    padding: $spacing-xs
+    border-bottom: 1px solid $border-color
+    font-size: $font-size-xs
+    
     &:last-child
         border-bottom: none
-
+    
     .date
-        color: #4a5568
-
+        color: $secondary-text
+    
     .count
         font-weight: 500
-        color: #2c5282
+        color: $primary-color

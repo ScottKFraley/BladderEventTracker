@@ -3,35 +3,12 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "MyAngularApp": {
+    "bladder-event-tracker": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
-          "inlineTemplate": false,
-          "inlineStyle": false,
           "style": "sass",
-          "skipTests": false
-        },
-        "@schematics/angular:class": {
-          "skipTests": true
-        },
-        "@schematics/angular:directive": {
-          "skipTests": true
-        },
-        "@schematics/angular:guard": {
-          "skipTests": true
-        },
-        "@schematics/angular:interceptor": {
-          "skipTests": true
-        },
-        "@schematics/angular:pipe": {
-          "skipTests": true
-        },
-        "@schematics/angular:resolver": {
-          "skipTests": true
-        },
-        "@schematics/angular:service": {
-          "skipTests": true
+          "standalone": true
         }
       },
       "root": "",
@@ -41,7 +18,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/my-angular-app",
+            "outputPath": "dist/bladder-event-tracker",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -54,27 +31,17 @@
               "src/assets"
             ],
             "styles": [
-              "node_modules/bootswatch/dist/journal/bootstrap.min.css",
-              "src/styles.sass"
+              "src/styles/styles.sass"
             ],
-            "scripts": [
-              "node_modules/@popperjs/core/dist/umd/popper.min.js",
-              "node_modules/bootstrap/dist/js/bootstrap.min.js"
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ],
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1000kb",
-                  "maximumError": "1.5mb"
+                  "maximumWarning": "500kb",
+                  "maximumError": "1mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -82,34 +49,24 @@
                   "maximumError": "4kb"
                 }
               ],
-              "optimization": {
-                "scripts": true,
-                "styles": {
-                  "minify": true,
-                  "inlineCritical": false
-                }
-              },
               "outputHashing": "all"
             },
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
+              "sourceMap": true
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "MyAngularApp:build:production",
-              "proxyConfig": "proxy.conf.docker.json"
+              "buildTarget": "bladder-event-tracker:build:production"
             },
             "development": {
-              "buildTarget": "MyAngularApp:build:development",
-              "proxyConfig": "proxy.conf.dev.json"
+              "buildTarget": "bladder-event-tracker:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -117,7 +74,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "buildTarget": "MyAngularApp:build"
+            "buildTarget": "bladder-event-tracker:build"
           }
         },
         "test": {
@@ -134,15 +91,12 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.sass"
+              "src/styles/styles.sass"
             ],
             "scripts": []
           }
         }
       }
     }
-  },
-  "cli": {
-    "analytics": false
   }
 }

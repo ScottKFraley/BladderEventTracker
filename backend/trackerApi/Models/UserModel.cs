@@ -27,6 +27,9 @@ public class User
     [Required]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Required]
+    public bool IsAdmin { get; set; } = false;
+
     /// <summary>
     /// For navigation.
     /// </summary>
