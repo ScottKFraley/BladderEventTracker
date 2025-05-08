@@ -1,11 +1,130 @@
 // Import variables
 @import 'variables'
 
+// This is for survey.js 
+@import 'survey-core/defaultV2.min'
+
+// Import Bootstrap functions first (required for variable overrides)
+@import 'bootstrap/scss/functions'
+
+// Add your variable overrides here, before importing Bootstrap
+$primary: #F47C3C  // This overrides Bootstrap's primary color
+$primary-color: $primary  // This is for our custom styles
+
+// Import all of Bootstrap
+@import 'bootstrap/scss/bootstrap'
+
 // Global styles go here
 body
-  font-family: 'Roboto', 'Helvetica Neue', sans-serif
+  font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif
   background-color: #f8f9fa
   margin: 0
   padding: 0
 
-// You can add more global styles here
+// Bootstrap overrides and additional styles
+.container
+  padding: 1rem
+
+// Form styles
+.form-group
+  margin-bottom: 1rem
+
+// Dashboard styles
+.dashboard-totals
+  padding: $spacing-sm
+
+// Metrics table styles
+.metrics-table
+  background: $card-bg
+  border-radius: $card-radius
+  padding: $spacing-md
+  box-shadow: $card-shadow
+  margin-bottom: $spacing-lg
+
+.metrics-header
+  display: flex
+  justify-content: space-between
+  margin-bottom: $spacing-xs
+  
+  span
+    flex: 1
+    font-size: $font-size-sm
+    font-weight: 600
+    color: $text-color
+    padding: 0 $spacing-xs
+
+.metrics-values
+  display: flex
+  justify-content: space-between
+  
+  span
+    flex: 1
+    font-size: $font-size-lg
+    font-weight: bold
+    color: $primary-color
+    padding: 0 $spacing-xs
+
+// Daily breakdown styles
+.daily-breakdown
+  background: $card-bg
+  border-radius: $card-radius
+  padding: $spacing-md
+  box-shadow: $card-shadow
+  
+  h3
+    margin: 0 0 $spacing-sm
+    color: $text-color
+    font-size: $font-size-sm
+    font-weight: 600
+
+.daily-counts
+  display: grid
+  gap: $spacing-xs
+
+.count-item
+  display: flex
+  justify-content: space-between
+  padding: $spacing-xs
+  border-bottom: 1px solid $border-color
+  font-size: $font-size-xs
+  
+  &:last-child
+    border-bottom: none
+  
+  .date
+    color: $secondary-text
+  
+  .count
+    font-weight: 500
+    color: $primary-color
+
+// Responsive adjustments
+@media (max-width: 600px)
+  // Existing styles
+  .metrics-header, .metrics-values
+    flex-direction: column
+    
+    span
+      margin-bottom: $spacing-xs
+  
+  // New mobile adjustments
+  html, body
+    font-size: 14px  // Smaller base font size for mobile
+  
+  h1
+    font-size: 1.8rem
+  
+  h2
+    font-size: 1.5rem
+  
+  h3
+    font-size: 1.2rem
+  
+  .metrics-values span
+    font-size: 1.3rem  // Smaller metric values on mobile
+  
+  .container
+    padding: 0.5rem  // Less padding on mobile
+  
+  .card, .metric-card, .daily-breakdown
+    padding: 0.75rem  // Less padding in cards on mobile

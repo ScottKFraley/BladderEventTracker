@@ -52,7 +52,7 @@ def start_parsing_datafile(input_file):
         USER_ID = "8e3ddf21-4153-4838-abc6-47d553a5d905"
         
         # Output file name based on input file
-        output_file = input_file.rsplit('.', 1)[0] + "_output.psql"
+        output_file = input_file.rsplit('.', 1)[0] + "_output.sql"
         
         # Open your input and output files
         with open(input_file, "r", encoding="utf-8-sig") as infile, open(output_file, "w", encoding="utf-8") as outfile:

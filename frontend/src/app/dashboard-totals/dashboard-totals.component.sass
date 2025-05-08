@@ -3,35 +3,37 @@
 .dashboard-totals
     padding: $spacing-sm
 
-.metric-grid
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
-    gap: $spacing-sm
-    margin-bottom: $spacing-lg
-
-.metric-card
+// Metrics list styles
+.metrics-list
     background: $card-bg
     border-radius: $card-radius
     padding: $spacing-md
     box-shadow: $card-shadow
-    transition: transform 0.2s, box-shadow 0.2s
+    margin-bottom: $spacing-lg
+
+.metric-item
+    display: flex
+    justify-content: space-between
+    margin-bottom: $spacing-xs
     
-    &:hover
-        transform: translateY(-2px)
-        box-shadow: $hover-shadow
+    &:last-child
+        margin-bottom: 0
     
-    h3
-        margin: 0 0 $spacing-xs
-        color: $text-color
+    .metric-label
         font-size: $font-size-sm
         font-weight: 600
+        color: $text-color
+        width: 180px  // Fixed width for all labels
+    
+    .metric-value
+        font-size: $font-size-sm
+        font-weight: bold
+        color: $primary-color
+        text-align: right
+        min-width: 50px
+        padding-left: $spacing-sm
 
-.metric-value
-    font-size: $font-size-lg
-    font-weight: bold
-    color: $primary-color
-    margin: 0
-
+// Daily breakdown styles
 .daily-breakdown
     background: $card-bg
     border-radius: $card-radius
@@ -64,3 +66,16 @@
     .count
         font-weight: 500
         color: $primary-color
+
+// Responsive adjustments
+@media (max-width: 600px)
+    .metric-item
+        flex-direction: column
+        
+        .metric-label, .metric-value
+            width: 100%
+            text-align: left
+            padding-left: 0
+            
+        .metric-value
+            margin-bottom: $spacing-xs
