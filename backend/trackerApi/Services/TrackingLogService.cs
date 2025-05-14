@@ -10,12 +10,31 @@ public class TrackingLogService : ITrackingLogService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<TrackingLogService> _logger;
+    private string _timeZoneId;
+    private readonly TimeZoneInfo _targetTimeZone;
 
-    public TrackingLogService(AppDbContext dbContext, ILogger<TrackingLogService> logger)
+    public TrackingLogService(
+        AppDbContext dbContext,
+        ILogger<TrackingLogService> logger,
+        IConfiguration configuration)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger;
         _logger.LogInformation("TrackingLogService constructed with DbContext instance.");
+
+        _timeZoneId = configuration.GetValue<string>("AppSettings:TimeZoneId")
+            ?? "America/Los_Angeles";
+
+        // Initialize the TimeZoneInfo with error handling
+        try
+        {
+            _targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_timeZoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            _logger.LogWarning("Specified timezone {TimeZoneId} not found, falling back to local time", _timeZoneId);
+            _targetTimeZone = TimeZoneInfo.Local;
+        }
     }
 
     public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
@@ -30,14 +49,24 @@ public class TrackingLogService : ITrackingLogService
                 throw new InvalidOperationException("DbContext is null");
             }
 
-            // Your query logic here
-            var nDaysAgo = DateTime.UtcNow.AddDays(-numDays);
+            // Get current date in target timezone and set to midnight
+            var targetNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
+            var targetToday = targetNow.Date;
+            var targetStartDate = targetToday.AddDays(-(numDays - 1));
+
+            // Convert back to UTC for database query
+            // the data that's going to / getting loaded from Tally is in local / pacific time.
+            //var utcStartDate = TimeZoneInfo.ConvertTimeToUtc(targetStartDate, _targetTimeZone);
 
             var trackedEvents = await _dbContext.TrackingLogs
-                .Where(t => t.UserId == userId && t.EventDate >= nDaysAgo)
+                .Where(t => t.UserId == userId && t.EventDate >= targetStartDate)
                 .OrderByDescending(t => t.EventDate)
                 .ToListAsync();
 
+            _logger.LogInformation(
+                "Querying records from {LocalStartDate} Local Time)", targetStartDate);
+
+            // Rest of your existing code...
             if (trackedEvents == null)
             {
                 const string MessageTemplate = "No logged events found for the last {NumDays} days";
@@ -49,7 +78,7 @@ public class TrackingLogService : ITrackingLogService
             }
 
             _logger.LogInformation(
-                "{trackedEvents.Count} tracking log record(s) found for the last {NumDays} days", 
+                "{trackedEvents.Count} tracking log record(s) found for the last {NumDays} days",
                 trackedEvents.Count, numDays);
 
             return trackedEvents;
