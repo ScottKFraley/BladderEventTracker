@@ -37,7 +37,7 @@ services:
 
   database:
     container_name: database
-    profiles: ["backend", "backup"]
+    profiles: ["backend"]
     image: postgres:15
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

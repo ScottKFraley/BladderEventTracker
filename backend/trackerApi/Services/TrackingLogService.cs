@@ -37,65 +37,6 @@ public class TrackingLogService : ITrackingLogService
         }
     }
 
-    public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
-    {
-        try
-        {
-            _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
-
-            if (_dbContext == null)
-            {
-                _logger.LogError("DbContext is null");
-                throw new InvalidOperationException("DbContext is null");
-            }
-
-            // Get current date in target timezone and set to midnight
-            var targetNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
-            var targetToday = targetNow.Date;
-            var targetStartDate = targetToday.AddDays(-(numDays - 1));
-
-            // Convert back to UTC for database query
-            // the data that's going to / getting loaded from Tally is in local / pacific time.
-            //var utcStartDate = TimeZoneInfo.ConvertTimeToUtc(targetStartDate, _targetTimeZone);
-
-            var trackedEvents = await _dbContext.TrackingLogs
-                .Where(t => t.UserId == userId && t.EventDate >= targetStartDate)
-                .OrderByDescending(t => t.EventDate)
-                .ToListAsync();
-
-            _logger.LogInformation(
-                "Querying records from {LocalStartDate} Local Time)", targetStartDate);
-
-            // Rest of your existing code...
-            if (trackedEvents == null)
-            {
-                const string MessageTemplate = "No logged events found for the last {NumDays} days";
-                var message = string.Format(MessageTemplate.Replace("{NumDays}", "{0}"), numDays);
-
-                _logger.LogWarning(MessageTemplate, numDays);
-
-                throw new Exception(message);
-            }
-
-            _logger.LogInformation(
-                "{trackedEvents.Count} tracking log record(s) found for the last {NumDays} days",
-                trackedEvents.Count, numDays);
-
-            return trackedEvents;
-        }
-        catch (ObjectDisposedException ode)
-        {
-            _logger.LogError(ode, "DbContext was disposed when attempting to access it!");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving tracking log records for the last {NumDays} days", numDays);
-
-            throw;
-        }
-    }
-
     public async Task<IEnumerable<TrackingLogItem>> GetLogRecordsAsync(Guid? userId = null)
     {
         try
@@ -123,6 +64,66 @@ public class TrackingLogService : ITrackingLogService
         }
     }
 
+    public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
+
+            if (_dbContext == null)
+            {
+                _logger.LogError("DbContext is null");
+                throw new InvalidOperationException("DbContext is null");
+            }
+
+            // Get current Pacific time and set to midnight
+            _logger.LogInformation(
+                "The `_targetTimeZone.Id` is \"{TimeZoneId}\" <--------", _targetTimeZone.Id);
+
+            var pacificNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
+            // get yesterday at midnight pacific time
+            var pacificStartDate = pacificNow.Date.AddDays(-1);
+
+
+            // TODO: The offset is still not right as I'm seeing data on the 15th at 1630 back to the 13th! still need to make the adjustment(s)
+
+
+            // Since data is stored in Pacific time, use Pacific time directly
+            // but ensure the Kind is set appropriately for the database
+            var queryDate = DateTime.SpecifyKind(pacificStartDate, DateTimeKind.Utc);
+
+            var trackedEvents = await _dbContext.TrackingLogs
+                .Where(t => t.UserId == userId && t.EventDate >= queryDate)
+                .OrderByDescending(t => t.EventDate)
+                .ToListAsync();
+
+            _logger.LogInformation(
+                "Querying records from {PacificStartDate} Pacific Time",
+                pacificStartDate);
+
+            if (trackedEvents.Count == 0)
+            {
+                const string MessageTemplate = "No logged events found for the last {NumDays} days";
+                var message = string.Format(MessageTemplate.Replace("{NumDays}", "{0}"), numDays);
+
+                _logger.LogWarning(MessageTemplate, numDays);
+
+                throw new Exception(message);
+            }
+
+            _logger.LogInformation(
+                "{Count} tracking log record(s) found for the last {NumDays} days",
+                trackedEvents.Count, numDays);
+
+            return trackedEvents;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tracking log records for the last {NumDays} days", numDays);
+            throw;
+        }
+    }
+
     public async Task<TrackingLogItem> CreateLogRecordAsync(TrackingLogItem logItem)
     {
         try
@@ -142,12 +143,16 @@ public class TrackingLogService : ITrackingLogService
                 throw new KeyNotFoundException($"User with ID {logItem.UserId} not found");
             }
 
-            logItem.EventDate = DateTime.UtcNow;
+            // Get current Pacific time
+            var pacificNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
+            // Store as Pacific time but with UTC Kind to match existing data
+            logItem.EventDate = DateTime.SpecifyKind(pacificNow, DateTimeKind.Utc);
 
             await _dbContext.TrackingLogs.AddAsync(logItem);
             await _dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Successfully created tracking log record with Id: {LogItemId}", logItem.Id);
+
             return logItem;
         }
         catch (Exception ex)
