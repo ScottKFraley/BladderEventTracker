@@ -66,6 +66,8 @@ public class TrackingLogService : ITrackingLogService
 
     public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
     {
+        DateTime pacificStartDate = default;
+
         try
         {
             _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
@@ -76,24 +78,26 @@ public class TrackingLogService : ITrackingLogService
                 throw new InvalidOperationException("DbContext is null");
             }
 
-            // Get current Pacific time and set to midnight
             _logger.LogInformation(
                 "The `_targetTimeZone.Id` is \"{TimeZoneId}\" <--------", _targetTimeZone.Id);
 
+            // Get the current Pacific time
             var pacificNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
-            // get yesterday at midnight pacific time
-            var pacificStartDate = pacificNow.Date.AddDays(-1);
+            _logger.LogDebug("pacificNow is: {PacificDate}", pacificNow);
 
+            // Get midnight of the current day in Pacific time
+            var pacificMidnight = pacificNow.Date;
 
-            // TODO: The offset is still not right as I'm seeing data on the 15th at 1630 back to the 13th! still need to make the adjustment(s)
+            // Go back 2 days to get the day before yesterday at midnight Pacific time
+            var twoDaysAgoMidnight = pacificMidnight.AddDays(-numDays);
+            _logger.LogDebug("Two days ago midnight is: {PacificDate}", twoDaysAgoMidnight);
 
+            // Convert to UTC for the query (this will be ~7 or 8 hours ahead, so probably May 15th morning UTC)
+            var utcQueryDate = TimeZoneInfo.ConvertTimeToUtc(twoDaysAgoMidnight, _targetTimeZone);
 
-            // Since data is stored in Pacific time, use Pacific time directly
-            // but ensure the Kind is set appropriately for the database
-            var queryDate = DateTime.SpecifyKind(pacificStartDate, DateTimeKind.Utc);
-
+            // Then query for all records >= utcQueryDate
             var trackedEvents = await _dbContext.TrackingLogs
-                .Where(t => t.UserId == userId && t.EventDate >= queryDate)
+                .Where(t => t.UserId == userId && t.EventDate >= utcQueryDate)
                 .OrderByDescending(t => t.EventDate)
                 .ToListAsync();
 
@@ -101,25 +105,31 @@ public class TrackingLogService : ITrackingLogService
                 "Querying records from {PacificStartDate} Pacific Time",
                 pacificStartDate);
 
-            if (trackedEvents.Count == 0)
+            if (trackedEvents.Count > 0)
             {
-                const string MessageTemplate = "No logged events found for the last {NumDays} days";
-                var message = string.Format(MessageTemplate.Replace("{NumDays}", "{0}"), numDays);
+                var earliestDate = trackedEvents.Min(t => t.EventDate);
+                var latestDate = trackedEvents.Max(t => t.EventDate);
+                _logger.LogInformation(
+                    "Got events from {EarliestDate} to {LatestDate} UTC",
+                    earliestDate, latestDate);
 
-                _logger.LogWarning(MessageTemplate, numDays);
-
-                throw new Exception(message);
+                // Convert these to Pacific for easier debugging
+                var earliestPacific = TimeZoneInfo.ConvertTimeFromUtc(earliestDate, _targetTimeZone);
+                var latestPacific = TimeZoneInfo.ConvertTimeFromUtc(latestDate, _targetTimeZone);
+                _logger.LogInformation(
+                    "Date range in Pacific: {EarliestPacific} to {LatestPacific}",
+                    earliestPacific, latestPacific);
             }
 
             _logger.LogInformation(
-                "{Count} tracking log record(s) found for the last {NumDays} days",
-                trackedEvents.Count, numDays);
+                "{Count} tracking log record(s) found / returned.",
+                trackedEvents.Count);
 
             return trackedEvents;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving tracking log records for the last {NumDays} days", numDays);
+            _logger.LogError(ex, "No TrackingLog records found since {YesterdayAtMidnight}", pacificStartDate);
             throw;
         }
     }

@@ -1,6 +1,7 @@
 import csv
 import sys
-from datetime import datetime
+import datetime
+import pytz 
 
 def urgency_to_int(text):
     urgency_map = {
@@ -19,32 +20,40 @@ def leak_to_int(text):
     }
     return leak_map.get(text, 1)  # Default to 1 if not found
 
+
 def yesNo_to_bool(input_text):
     if input_text and input_text.lower() in ['yes', 'y', 'true', '1']:
         return 'true'
     return 'false'
 
+
 def format_datetime(date_str, time_str):
     # Parse date and time from the format in the CSV
     try:
-        # Parse the date (format: YYYY-MM-DD)  "%Y-%m-%d"
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        # Parse the date (format: YYYY-MM-DD)
+        date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d")
         
         # Parse the time (format: H:MM or HH:MM)
         time_parts = time_str.split(':')
         hour = int(time_parts[0])
         minute = int(time_parts[1])
         
-        # Combine date and time
-        combined = datetime(date_obj.year, date_obj.month, date_obj.day, hour, minute)
+        # Combine date and time as a naive datetime
+        naive_datetime = datetime.datetime(date_obj.year, date_obj.month, date_obj.day, hour, minute)
         
-        return combined.isoformat()
+        # Get the Pacific timezone (this handles DST automatically)
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        
+        # Localize the naive datetime to Pacific time
+        aware_datetime = pacific_tz.localize(naive_datetime)
+        
+        # Format for PostgreSQL with explicit timezone info
+        return aware_datetime.isoformat()
     
     except Exception as e:
         print(f"Error parsing date/time: {date_str} {time_str} - {str(e)}")
-        
         return None
-    
+
 
 def start_parsing_datafile(input_file):
     try:

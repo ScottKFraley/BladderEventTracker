@@ -1,5 +1,5 @@
 name: bladder-tracker
-location: eastus
+location: westus
 properties:
   managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.App/managedEnvironments/{environment-name}
   configuration:
