@@ -13,7 +13,7 @@ public class TrackingLogItem
     public Guid UserId { get; set; }
 
     [Required]
-    public DateTime EventDate { get; set; } = DateTime.Now;
+    public DateTimeOffset EventDate { get; set; } = DateTime.Now;
 
     public bool Accident { get; set; } = false;
 

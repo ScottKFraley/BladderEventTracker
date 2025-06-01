@@ -28,6 +28,7 @@ public class TrackingLogService : ITrackingLogService
         // Initialize the TimeZoneInfo with error handling
         try
         {
+            _logger.LogInformation("Specified time zone after loading from appsettings; {TimeZoneId}", _timeZoneId);
             _targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_timeZoneId);
         }
         catch (TimeZoneNotFoundException)
@@ -105,21 +106,29 @@ public class TrackingLogService : ITrackingLogService
                 "Querying records from {PacificStartDate} Pacific Time",
                 pacificStartDate);
 
-            if (trackedEvents.Count > 0)
-            {
-                var earliestDate = trackedEvents.Min(t => t.EventDate);
-                var latestDate = trackedEvents.Max(t => t.EventDate);
-                _logger.LogInformation(
-                    "Got events from {EarliestDate} to {LatestDate} UTC",
-                    earliestDate, latestDate);
+            // Date/Times are stored as Pacific times, but set as UTC due to Postgres issue. -SKF
+            //if (trackedEvents.Count > 0)
+            //{
+            //    var earliestDate = trackedEvents.Min(t => t.EventDate);
+            //    var latestDate = trackedEvents.Max(t => t.EventDate);
+            //    _logger.LogInformation(
+            //        "Got events from {EarliestDate} to {LatestDate} UTC",
+            //        earliestDate, latestDate);
 
-                // Convert these to Pacific for easier debugging
-                var earliestPacific = TimeZoneInfo.ConvertTimeFromUtc(earliestDate, _targetTimeZone);
-                var latestPacific = TimeZoneInfo.ConvertTimeFromUtc(latestDate, _targetTimeZone);
-                _logger.LogInformation(
-                    "Date range in Pacific: {EarliestPacific} to {LatestPacific}",
-                    earliestPacific, latestPacific);
-            }
+            //    // Convert these to Pacific for easier debugging
+            //    var earliestPacific = TimeZoneInfo.ConvertTimeFromUtc(earliestDate, _targetTimeZone);
+            //    var latestPacific = TimeZoneInfo.ConvertTimeFromUtc(latestDate, _targetTimeZone);
+            //    _logger.LogInformation(
+            //        "Date range in Pacific: {EarliestPacific} to {LatestPacific}",
+            //        earliestPacific, latestPacific);
+            //}
+
+            ////  make sure to remove this later
+            //foreach (var evt in trackedEvents.Take(3)) // Just log first 3 events
+            //{
+            //    _logger.LogInformation("Raw stored EventDate: {EventDate} (Kind: {Kind})",
+            //        evt.EventDate, evt.EventDate.Kind);
+            //}
 
             _logger.LogInformation(
                 "{Count} tracking log record(s) found / returned.",
@@ -139,6 +148,8 @@ public class TrackingLogService : ITrackingLogService
         try
         {
             _logger.LogInformation("Creating new tracking log record for UserId: {UserId}", logItem.UserId);
+            _logger.LogInformation("Received EventDate: {EventDate} (Offset: {Offset})",
+                        logItem.EventDate, logItem.EventDate.Offset);
 
             if (logItem.UserId == Guid.Empty)
             {
@@ -153,10 +164,10 @@ public class TrackingLogService : ITrackingLogService
                 throw new KeyNotFoundException($"User with ID {logItem.UserId} not found");
             }
 
-            // Get current Pacific time
-            var pacificNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
-            // Store as Pacific time but with UTC Kind to match existing data
-            logItem.EventDate = DateTime.SpecifyKind(pacificNow, DateTimeKind.Utc);
+            // Create proper DateTimeOffset with Pacific timezone
+            var pacificOffset = _targetTimeZone.GetUtcOffset(logItem.EventDate.DateTime);
+            logItem.EventDate = new DateTimeOffset(logItem.EventDate.DateTime, pacificOffset);
+            _logger.LogInformation("Created DateTimeOffset for storage: {EventDate}", logItem.EventDate);
 
             await _dbContext.TrackingLogs.AddAsync(logItem);
             await _dbContext.SaveChangesAsync();

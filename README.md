@@ -147,7 +147,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ```bash
 cd frontend
-npm start:dev
+npm run start:dev
 ```
 
 #### Backend API

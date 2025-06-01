@@ -32,11 +32,10 @@ export class SurveyComponent implements OnInit {
         defaultValue: new Date().toLocaleString('sv').slice(0, 16).replace(' ', 'T')
       },
       {
-        type: "rating",
+        type: "dropdown",
         name: "Urgency",
         title: "Urgency (0-4)",
-        rateMax: 4,
-        rateValues: [
+        choices: [
           { value: 0, text: "0 - No real urgency" },
           { value: 1, text: "1 - Slight urgency" },
           { value: 2, text: "2 - Pretty Urgent" },
@@ -54,22 +53,30 @@ export class SurveyComponent implements OnInit {
         defaultValue: false
       },
       {
-        type: "rating",
+        type: "dropdown",
         name: "PainLevel",
         title: "Pain Level (0-10)",
-        rateMin: 0,
-        rateMax: 10,
-        minRateDescription: "No Pain (0)",
-        maxRateDescription: "Worst Pain (10)",
+        choices: [
+          { value: 0, text: "0 - No Pain" },
+          { value: 1, text: "1" },
+          { value: 2, text: "2" },
+          { value: 3, text: "3" },
+          { value: 4, text: "4" },
+          { value: 5, text: "5" },
+          { value: 6, text: "6" },
+          { value: 7, text: "7" },
+          { value: 8, text: "8" },
+          { value: 9, text: "9" },
+          { value: 10, text: "10 - Worst Pain" }
+        ],
         isRequired: true,
         defaultValue: 1
       },
       {
-        type: "rating",
+        type: "dropdown",
         name: "LeakAmount",
         title: "Leak Amount (0-3)",
-        rateMax: 3,
-        rateValues: [
+        choices: [
           { value: 0, text: "0 - None" },
           { value: 1, text: "1 - Slight" },
           { value: 2, text: "2 - Moderate" },

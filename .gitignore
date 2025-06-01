@@ -71,7 +71,13 @@ Thumbs.db
 *.cache
 *.njsproj
 .suo
-**/*.Designer.cs
+
+# Exclude Visual Studio designer files (but NOT EF Core migration designers)
+**/*Form*.Designer.cs
+**/*UserControl*.Designer.cs
+**/*Page*.Designer.cs
+**/*.designer.cs
+
 **/*.resx
 **/*.tt
 **/*.ttinclude
