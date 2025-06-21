@@ -184,7 +184,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
           ]
           volumeMounts: [
             {
-              name: 'postgres-data'
+              volumeName: 'postgres-data'
               mountPath: '/var/lib/postgresql/data'
             }
           ]

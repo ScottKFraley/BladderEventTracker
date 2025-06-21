@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY_NAME: bladdertracker
-  RESOURCE_GROUP: bladder-tracker-rg
+  RESOURCE_GROUP: azure-bladder-tracker
   CONTAINER_APP_NAME: bladder-tracker
   CONTAINER_APP_ENV: bladder-tracker-env
 
