@@ -17,7 +17,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Log in to Azure
       uses: azure/login@v1
@@ -25,72 +25,33 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
       
     - name: Log in to Azure Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.REGISTRY_NAME }}.azurecr.io
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
+      run: |
+        az acr login --name ${{ env.REGISTRY_NAME }}
         
-    - name: Build and push frontend image
-      uses: docker/build-push-action@v4
+    - name: Build and push nginx image
+      uses: docker/build-push-action@v5
       with:
-        context: ./frontend
+        context: .
+        file: ./nginx/Dockerfile
         push: true
-        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/frontend:${{ github.sha }},
-              ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/frontend:latest
+        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:${{ github.sha }},
+              ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:latest
               
     - name: Build and push backend image
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v5
       with:
         context: ./backend/trackerApi
         push: true
-        build-args: |
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
         tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:${{ github.sha }},
               ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:latest
               
-    - name: Replace tokens in YAML file
-      uses: cschleiden/replace-tokens@v1
-      with:
-        files: '["azure-container-apps.yaml"]'
-        tokenPrefix: '${'
-        tokenSuffix: '}'
-      env:
-        REGISTRY_NAME: ${{ env.REGISTRY_NAME }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        
-    - name: Deploy to Azure Container Apps
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az extension add --name containerapp --upgrade
-          
-          # Check if environment exists, create if not
-          env_exists=$(az containerapp env list -g ${{ env.RESOURCE_GROUP }} --query "[?name=='${{ env.CONTAINER_APP_ENV }}'].name" -o tsv)
-          if [ -z "$env_exists" ]; then
-            echo "Creating Container App Environment..."
-            az containerapp env create \
-              --name ${{ env.CONTAINER_APP_ENV }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
-              --location eastus
-          fi
-          
-          # Create storage for PostgreSQL data
-          az storage account create \
-            --name bladdertrackerstorage \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --location eastus \
-            --sku Standard_LRS
-            
-          az storage share create \
-            --name postgres-data \
-            --account-name bladdertrackerstorage
-          
-          # Deploy the Container App
-          az containerapp create \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --yaml azure-container-apps.yaml
+    - name: Deploy using Bicep
+      run: |
+        az deployment group create \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --template-file azure-container-apps.bicep \
+          --parameters dbPassword='${{ secrets.DB_PASSWORD }}' \
+                       containerRegistryName=${{ env.REGISTRY_NAME }}
