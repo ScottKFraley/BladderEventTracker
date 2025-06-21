@@ -6,15 +6,23 @@
 /out-tsc
 /bazel-out
 
-# no data files
+# no data files - more specific ignores
 database/backup.sql
+database/backups/**/*.sql
+database/data*.csv
+database/Bladder_Event_Log_Submissions*.csv
+database/Bladder_Event_Log_Submissions*.sql
+db_backups/
 **/*.dat
-**/*.sql
 **/*.psql
 **/*.pgsql
-**/*.csv
 
-# DO NOT check in ANYTHING in the .venv folder(s)
+# Ignore data export files but keep schema/migration files
+**/*_backup.sql
+**/*_dump.sql
+**/*_export.sql
+
+# DO NOT check in ANYTHING in the [Python] .venv folder(s)
 **/venv/
 **/.venv/
 
@@ -22,6 +30,11 @@ database/backup.sql
 /node_modules
 npm-debug.log
 yarn-error.log
+
+# Angular build artifacts
+**/node_modules/
+**/.angular/
+**/dist/
 
 # Environment files
 .env
@@ -76,7 +89,9 @@ Thumbs.db
 **/*Form*.Designer.cs
 **/*UserControl*.Designer.cs
 **/*Page*.Designer.cs
-**/*.designer.cs
+**/*Form*.designer.cs
+**/*UserControl*.designer.cs
+**/*Page*.designer.cs
 
 **/*.resx
 **/*.tt

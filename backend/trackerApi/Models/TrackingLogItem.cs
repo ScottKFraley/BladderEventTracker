@@ -12,8 +12,11 @@ public class TrackingLogItem
     [Required]
     public Guid UserId { get; set; }
 
+    /// <summary>
+    /// Events are stored as LOCAL TIME. So, in my case, Pacific daylight or standard.
+    /// </summary>
     [Required]
-    public DateTimeOffset EventDate { get; set; } = DateTime.Now;
+    public DateTime EventDate { get; set; } = DateTime.Now;
 
     public bool Accident { get; set; } = false;
 

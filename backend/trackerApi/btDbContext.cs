@@ -53,9 +53,8 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);  // or DeleteBehavior.Restrict if you don't want automatic deletion
 
             // Create a unique constraint on EventDate
-            //entity.HasIndex(e => e.EventDate).IsUnique();
             entity.Property(e => e.EventDate)
-                  .HasColumnType("timestamp with time zone");
+                  .HasColumnType("timestamp");
 
             // Configure EventDate with default
             entity.Property(e => e.EventDate)

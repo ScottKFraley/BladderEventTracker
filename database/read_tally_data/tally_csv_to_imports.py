@@ -1,7 +1,6 @@
 import csv
 import sys
 import datetime
-import pytz 
 
 def urgency_to_int(text):
     urgency_map = {
@@ -37,18 +36,12 @@ def format_datetime(date_str, time_str):
         time_parts = time_str.split(':')
         hour = int(time_parts[0])
         minute = int(time_parts[1])
-        
+
         # Combine date and time as a naive datetime
         naive_datetime = datetime.datetime(date_obj.year, date_obj.month, date_obj.day, hour, minute)
-        
-        # Get the Pacific timezone (this handles DST automatically)
-        pacific_tz = pytz.timezone('America/Los_Angeles')
-        
-        # Localize the naive datetime to Pacific time
-        aware_datetime = pacific_tz.localize(naive_datetime)
-        
+          
         # Format for PostgreSQL with explicit timezone info
-        return aware_datetime.isoformat()
+        return naive_datetime.isoformat()
     
     except Exception as e:
         print(f"Error parsing date/time: {date_str} {time_str} - {str(e)}")
@@ -115,7 +108,7 @@ def start_parsing_datafile(input_file):
                     notes_value = 'DEFAULT'
                 
                 # Format the values
-                values = f"(TIMESTAMP WITH TIME ZONE '{formatted_datetime}', " \
+                values = f"(TIMESTAMP '{formatted_datetime}', " \
                         f"{accident}, " \
                         f"{change_pad}, " \
                         f"{leak_amount}, " \

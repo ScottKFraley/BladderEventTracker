@@ -10,8 +10,6 @@ public class TrackingLogService : ITrackingLogService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILogger<TrackingLogService> _logger;
-    private string _timeZoneId;
-    private readonly TimeZoneInfo _targetTimeZone;
 
     public TrackingLogService(
         AppDbContext dbContext,
@@ -19,23 +17,9 @@ public class TrackingLogService : ITrackingLogService
         IConfiguration configuration)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+
         _logger = logger;
         _logger.LogInformation("TrackingLogService constructed with DbContext instance.");
-
-        _timeZoneId = configuration.GetValue<string>("AppSettings:TimeZoneId")
-            ?? "America/Los_Angeles";
-
-        // Initialize the TimeZoneInfo with error handling
-        try
-        {
-            _logger.LogInformation("Specified time zone after loading from appsettings; {TimeZoneId}", _timeZoneId);
-            _targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_timeZoneId);
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            _logger.LogWarning("Specified timezone {TimeZoneId} not found, falling back to local time", _timeZoneId);
-            _targetTimeZone = TimeZoneInfo.Local;
-        }
     }
 
     public async Task<IEnumerable<TrackingLogItem>> GetLogRecordsAsync(Guid? userId = null)
@@ -67,8 +51,6 @@ public class TrackingLogService : ITrackingLogService
 
     public async Task<List<TrackingLogItem>> GetNDaysOfLogRecordsAsync(int numDays, Guid userId)
     {
-        DateTime pacificStartDate = default;
-
         try
         {
             _logger.LogInformation("Retrieving tracking log record(s) for the last {NumDays} days", numDays);
@@ -79,66 +61,25 @@ public class TrackingLogService : ITrackingLogService
                 throw new InvalidOperationException("DbContext is null");
             }
 
-            _logger.LogInformation(
-                "The `_targetTimeZone.Id` is \"{TimeZoneId}\" <--------", _targetTimeZone.Id);
+            // Get current local [in my case, Pacific] time and calculate the cutoff date
+            var localNow = DateTime.Now;
+            var cutoffDate = localNow.Date.AddDays(-numDays);
 
-            // Get the current Pacific time
-            var pacificNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _targetTimeZone);
-            _logger.LogDebug("pacificNow is: {PacificDate}", pacificNow);
+            _logger.LogDebug("Querying for records since: {CutoffDate}", cutoffDate);
 
-            // Get midnight of the current day in Pacific time
-            var pacificMidnight = pacificNow.Date;
-
-            // Go back 2 days to get the day before yesterday at midnight Pacific time
-            var twoDaysAgoMidnight = pacificMidnight.AddDays(-numDays);
-            _logger.LogDebug("Two days ago midnight is: {PacificDate}", twoDaysAgoMidnight);
-
-            // Convert to UTC for the query (this will be ~7 or 8 hours ahead, so probably May 15th morning UTC)
-            var utcQueryDate = TimeZoneInfo.ConvertTimeToUtc(twoDaysAgoMidnight, _targetTimeZone);
-
-            // Then query for all records >= utcQueryDate
+            // Query directly using Pacific time (no UTC conversion needed)
             var trackedEvents = await _dbContext.TrackingLogs
-                .Where(t => t.UserId == userId && t.EventDate >= utcQueryDate)
+                .Where(t => t.UserId == userId && t.EventDate >= cutoffDate)
                 .OrderByDescending(t => t.EventDate)
                 .ToListAsync();
 
-            _logger.LogInformation(
-                "Querying records from {PacificStartDate} Pacific Time",
-                pacificStartDate);
-
-            // Date/Times are stored as Pacific times, but set as UTC due to Postgres issue. -SKF
-            //if (trackedEvents.Count > 0)
-            //{
-            //    var earliestDate = trackedEvents.Min(t => t.EventDate);
-            //    var latestDate = trackedEvents.Max(t => t.EventDate);
-            //    _logger.LogInformation(
-            //        "Got events from {EarliestDate} to {LatestDate} UTC",
-            //        earliestDate, latestDate);
-
-            //    // Convert these to Pacific for easier debugging
-            //    var earliestPacific = TimeZoneInfo.ConvertTimeFromUtc(earliestDate, _targetTimeZone);
-            //    var latestPacific = TimeZoneInfo.ConvertTimeFromUtc(latestDate, _targetTimeZone);
-            //    _logger.LogInformation(
-            //        "Date range in Pacific: {EarliestPacific} to {LatestPacific}",
-            //        earliestPacific, latestPacific);
-            //}
-
-            ////  make sure to remove this later
-            //foreach (var evt in trackedEvents.Take(3)) // Just log first 3 events
-            //{
-            //    _logger.LogInformation("Raw stored EventDate: {EventDate} (Kind: {Kind})",
-            //        evt.EventDate, evt.EventDate.Kind);
-            //}
-
-            _logger.LogInformation(
-                "{Count} tracking log record(s) found / returned.",
-                trackedEvents.Count);
+            _logger.LogInformation("{Count} tracking log record(s) found / returned.", trackedEvents.Count);
 
             return trackedEvents;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "No TrackingLog records found since {YesterdayAtMidnight}", pacificStartDate);
+            _logger.LogError(ex, "Error retrieving tracking log records for UserId: {UserId}", userId);
             throw;
         }
     }
@@ -148,8 +89,7 @@ public class TrackingLogService : ITrackingLogService
         try
         {
             _logger.LogInformation("Creating new tracking log record for UserId: {UserId}", logItem.UserId);
-            _logger.LogInformation("Received EventDate: {EventDate} (Offset: {Offset})",
-                        logItem.EventDate, logItem.EventDate.Offset);
+            _logger.LogInformation("Received EventDate: {EventDate}", logItem.EventDate);
 
             if (logItem.UserId == Guid.Empty)
             {
@@ -163,11 +103,6 @@ public class TrackingLogService : ITrackingLogService
                 _logger.LogWarning("Attempt to create tracking log record for non-existent UserId: {UserId}", logItem.UserId);
                 throw new KeyNotFoundException($"User with ID {logItem.UserId} not found");
             }
-
-            // Create proper DateTimeOffset with Pacific timezone
-            var pacificOffset = _targetTimeZone.GetUtcOffset(logItem.EventDate.DateTime);
-            logItem.EventDate = new DateTimeOffset(logItem.EventDate.DateTime, pacificOffset);
-            _logger.LogInformation("Created DateTimeOffset for storage: {EventDate}", logItem.EventDate);
 
             await _dbContext.TrackingLogs.AddAsync(logItem);
             await _dbContext.SaveChangesAsync();

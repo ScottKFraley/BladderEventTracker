@@ -1,5 +1,0 @@
-# PostgreSQL exclusions
-postgres-data/
-
-.venv/
-

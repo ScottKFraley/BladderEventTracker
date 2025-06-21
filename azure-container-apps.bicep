@@ -14,7 +14,7 @@ param logAnalyticsWorkspaceName string = 'bladder-tracker-logs'
 param containerRegistryName string = 'bladdertracker'
 
 @description('Specifies the name of the storage account for PostgreSQL data.')
-param storageAccountName string = 'bladdertrackerstorage'
+param storageAccountName string = 'bladdertrackerstorage${uniqueString(resourceGroup().id)}'
 
 @description('Specifies the password for the PostgreSQL database.')
 @secure()
@@ -74,6 +74,20 @@ resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-0
   }
 }
 
+// Add storage to Container App Environment
+resource storage 'Microsoft.App/managedEnvironments/storages@2022-10-01' = {
+  parent: containerAppEnvironment
+  name: 'postgres-storage'
+  properties: {
+    azureFile: {
+      accountName: storageAccount.name
+      accountKey: storageAccount.listKeys().keys[0].value
+      shareName: 'postgres-data'
+      accessMode: 'ReadWrite'
+    }
+  }
+}
+
 // Create Container App
 resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
   name: containerAppName
@@ -83,7 +97,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
     configuration: {
       ingress: {
         external: true
-        targetPort: 4200
+        targetPort: 80  // nginx port
         allowInsecure: false
         traffic: [
           {
@@ -102,18 +116,12 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
     template: {
       containers: [
         {
-          name: 'frontend'
-          image: '${containerRegistryName}.azurecr.io/bladder-tracker/frontend:latest'
+          name: 'nginx'
+          image: '${containerRegistryName}.azurecr.io/bladder-tracker/nginx:latest'
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('0.25')
+            memory: '0.5Gi'
           }
-          env: [
-            {
-              name: 'BACKEND_API_URL'
-              value: 'http://backend'
-            }
-          ]
         }
         {
           name: 'backend'
@@ -128,6 +136,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               value: 'Production'
             }
             {
+              name: 'ASPNETCORE_URLS'
+              value: 'http://+:5000'
+            }
+            {
               name: 'PG_DATABASE'
               value: 'BETrackingDb'
             }
@@ -137,7 +149,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             }
             {
               name: 'PG_HOST'
-              value: 'database'
+              value: 'localhost'
             }
             {
               name: 'PG_PORT'
@@ -201,6 +213,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       }
     }
   }
+  dependsOn: [
+    storage
+  ]
 }
 
 output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
+output storageAccountName string = storageAccount.name

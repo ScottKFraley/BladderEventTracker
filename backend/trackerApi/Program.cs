@@ -16,7 +16,7 @@ using trackerApi.Services;
 // 1. Logger bootstrap so that I have the ability to log early startup/bootstrapping issues.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
+    //.WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .CreateLogger();
