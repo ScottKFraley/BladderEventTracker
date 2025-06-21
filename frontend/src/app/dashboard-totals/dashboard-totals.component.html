@@ -1,0 +1,34 @@
+<div class="dashboard-totals">
+    <div class="metrics-list">
+        <div class="metric-item">
+            <span class="metric-label">Average Pain Level:</span>
+            <span class="metric-value">{{ averagePainLevel$ | async | number:'1.1-1' }}</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">Average Urgency Level:</span>
+            <span class="metric-value">{{ averageUrgencyLevel$ | async | number:'1.1-1' }}</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">Average Entries / day:</span>
+            <span class="metric-value">{{ averageEntriesPerDay$ | async | number:'1.0-1' }}</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">Total Log Entries:</span>
+            <span class="metric-value">{{ (trackingLogs$ | async)?.length || 0 }}</span>
+        </div>
+    </div>
+
+    @if (dailyLogCounts$ | async; as counts) {
+        <div class="daily-breakdown">
+            <h3>Daily Entry Counts</h3>
+            <div class="daily-counts">
+                @for (entry of counts | keyvalue; track entry.key) {
+                    <div class="count-item">
+                        <span class="date">{{ entry.key }}</span>
+                        <span class="count">{{ entry.value }} logs</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

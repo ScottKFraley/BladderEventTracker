@@ -6,10 +6,43 @@
 /out-tsc
 /bazel-out
 
+# no data files - more specific ignores
+database/backup.sql
+database/backups/**/*.sql
+database/data*.csv
+database/Bladder_Event_Log_Submissions*.csv
+database/Bladder_Event_Log_Submissions*.sql
+db_backups/
+**/*.dat
+**/*.psql
+**/*.pgsql
+
+# Ignore data export files but keep schema/migration files
+**/*_backup.sql
+**/*_dump.sql
+**/*_export.sql
+
+# DO NOT check in ANYTHING in the [Python] .venv folder(s)
+**/venv/
+**/.venv/
+
 # Node
 /node_modules
 npm-debug.log
 yarn-error.log
+
+# Angular build artifacts
+**/node_modules/
+**/.angular/
+**/dist/
+
+# Environment files
+.env
+./backend/trackerApi/.env
+!.env.example
+!./backend/trackerApi/.env
+
+**/set-env-vars.*
 
 # IDEs and editors
 .idea/
@@ -36,6 +69,7 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+**/*.lnk
 
 # System files
 .DS_Store
@@ -50,7 +84,15 @@ Thumbs.db
 *.cache
 *.njsproj
 .suo
-**/*.Designer.cs
+
+# Exclude Visual Studio designer files (but NOT EF Core migration designers)
+**/*Form*.Designer.cs
+**/*UserControl*.Designer.cs
+**/*Page*.Designer.cs
+**/*Form*.designer.cs
+**/*UserControl*.designer.cs
+**/*Page*.designer.cs
+
 **/*.resx
 **/*.tt
 **/*.ttinclude
@@ -60,7 +102,11 @@ Thumbs.db
 *.pdb
 *.xml
 *.manifest
+
+# Ignore configs but not Postman [backup] files
 *.config
+!*.postman*.json
+
 *.deploy
 *.nupkg
 *.symbols
@@ -79,8 +125,14 @@ msbuild.err
 msbuild.wrn
 
 # Logging files
+**/logs/
 *.log
+
+# Ignore all .txt files
 *.txt
+# But allow README.txt files in any directory
+!README.txt
+!readme.txt
 
 # Test related files
 **/TestResults/*

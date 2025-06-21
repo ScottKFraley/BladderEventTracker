@@ -1,0 +1,81 @@
+@import '../../styles/variables'
+
+.dashboard-totals
+    padding: $spacing-sm
+
+// Metrics list styles
+.metrics-list
+    background: $card-bg
+    border-radius: $card-radius
+    padding: $spacing-md
+    box-shadow: $card-shadow
+    margin-bottom: $spacing-lg
+
+.metric-item
+    display: flex
+    justify-content: space-between
+    margin-bottom: $spacing-xs
+    
+    &:last-child
+        margin-bottom: 0
+    
+    .metric-label
+        font-size: $font-size-sm
+        font-weight: 600
+        color: $text-color
+        width: 180px  // Fixed width for all labels
+    
+    .metric-value
+        font-size: $font-size-sm
+        font-weight: bold
+        color: $primary-color
+        text-align: right
+        min-width: 50px
+        padding-left: $spacing-sm
+
+// Daily breakdown styles
+.daily-breakdown
+    background: $card-bg
+    border-radius: $card-radius
+    padding: $spacing-md
+    box-shadow: $card-shadow
+    
+    h3
+        margin: 0 0 $spacing-sm
+        color: $text-color
+        font-size: $font-size-sm
+        font-weight: 600
+
+.daily-counts
+    display: grid
+    gap: $spacing-xs
+
+.count-item
+    display: flex
+    justify-content: space-between
+    padding: $spacing-xs
+    border-bottom: 1px solid $border-color
+    font-size: $font-size-xs
+    
+    &:last-child
+        border-bottom: none
+    
+    .date
+        color: $secondary-text
+    
+    .count
+        font-weight: 500
+        color: $primary-color
+
+// Responsive adjustments
+@media (max-width: 600px)
+    .metric-item
+        flex-direction: column
+        
+        .metric-label, .metric-value
+            width: 100%
+            text-align: left
+            padding-left: 0
+            
+        .metric-value
+            margin-bottom: $spacing-xs

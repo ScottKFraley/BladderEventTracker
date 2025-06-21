@@ -1,0 +1,13 @@
+﻿services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DB_PASSWORD=${DB_PASSWORD}    # This will use the value from .env
+      - DEBUG=${DEBUG}
+    # env_file:
+    #   - .env

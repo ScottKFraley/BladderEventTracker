@@ -1,0 +1,27 @@
+@import '../../styles/variables'
+
+table
+  width: 100%
+  border-collapse: separate  // This is important to allow cell spacing
+  border-spacing: 2px       // This adds the space between cells
+  margin-bottom: 1rem
+
+th, td
+  padding: 0.5rem
+  background-color: $card-bg  // Use your card background color
+  
+th
+  font-weight: 600
+  text-align: left
+  background-color: darken($card-bg, 3%)  // Slightly darker background for headers
+
+td
+  vertical-align: top
+
+// Add some styling for the link in the date column
+td a
+  color: $primary-color
+  text-decoration: none
+  
+  &:hover
+    text-decoration: underline

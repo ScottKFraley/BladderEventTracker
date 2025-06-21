@@ -1,7 +1,0 @@
-node_modules/
-dist/
-
-.angular/cache/
-
-src/environments/environment.prod.ts
-src/environments/environment.ts
