@@ -14,7 +14,7 @@ param logAnalyticsWorkspaceName string = 'bladder-tracker-logs'
 param containerRegistryName string = 'bladdertracker'
 
 @description('Specifies the name of the storage account for PostgreSQL data.')
-param storageAccountName string = 'bladdertrackerstorage${uniqueString(resourceGroup().id)}'
+param storageAccountName string = 'btstor${uniqueString(resourceGroup().id)}'
 
 @description('Specifies the password for the PostgreSQL database.')
 @secure()
