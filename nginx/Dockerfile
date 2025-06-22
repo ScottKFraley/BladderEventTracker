@@ -1,5 +1,5 @@
 # Build stage for frontend - use latest LTS for security
-FROM node:20-alpine AS frontend-build
+FROM node:20-alpine as frontend-build
 WORKDIR /app
 
 # Copy package files first for better caching
@@ -8,7 +8,7 @@ RUN npm ci --only=production
 
 # Copy frontend source and build
 COPY frontend/ ./
-RUN npm run build:prod
+RUN npm run build
 
 # Final nginx stage  
 FROM nginx:alpine
