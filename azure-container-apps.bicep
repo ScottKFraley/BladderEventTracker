@@ -117,7 +117,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       containers: [
         {
           name: 'nginx'
-          image: '${containerRegistryName}.azurecr.io/bladder-tracker/nginx:latest'
+          image: 'bladdertracker.azurecr.io/bladder-tracker/nginx:latest'
           resources: {
             cpu: json('0.25')
             memory: '0.5Gi'
