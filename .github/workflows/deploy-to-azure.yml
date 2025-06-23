@@ -54,4 +54,4 @@ jobs:
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file azure-container-apps.bicep \
           --parameters dbPassword='${{ secrets.DB_PASSWORD }}' \
-                       containerRegistryName=${{ env.REGISTRY_NAME }}
+          containerRegistryName=${{ env.REGISTRY_NAME }}
