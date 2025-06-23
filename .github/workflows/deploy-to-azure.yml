@@ -50,6 +50,8 @@ jobs:
               
     - name: Deploy using Bicep
       run: |
+        echo "Registry Name: ${{ env.REGISTRY_NAME }}"
+        echo "DB Password length: ${#{{ secrets.DB_PASSWORD }}}"
         az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file azure-container-apps.bicep \
