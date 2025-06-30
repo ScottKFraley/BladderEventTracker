@@ -49,15 +49,13 @@ jobs:
               ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:latest
               
     - name: Deploy using Bicep
-      env:
-        DB_PASSWORD_VAR: ${{ secrets.DB_PASSWORD }}
       run: |
         echo "Registry Name: ${{ env.REGISTRY_NAME }}"
         echo "Resource Group: ${{ env.RESOURCE_GROUP }}"
-        echo "The length of the DB_PASSWORD is: ${#DB_PASSWORD_VAR}"
         echo "About to deploy with these parameters..."
           az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file azure-container-apps.bicep \
           --parameters dbPassword='${{ secrets.DB_PASSWORD }}' \
-          containerRegistryName=${{ env.REGISTRY_NAME }}
+          containerRegistryName=${{ env.REGISTRY_NAME }} \
+          acrPassword='${{ secrets.ACR_PASSWORD }}'
