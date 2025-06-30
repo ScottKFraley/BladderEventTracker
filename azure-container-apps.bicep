@@ -20,6 +20,10 @@ param storageAccountName string = 'btstor${uniqueString(resourceGroup().id)}'
 @secure()
 param dbPassword string
 
+@secure()
+@description('Azure Container Registry admin password')
+param acrPassword string
+
 // Create Log Analytics workspace
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsWorkspaceName
@@ -95,9 +99,16 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
   properties: {
     managedEnvironmentId: containerAppEnvironment.id
     configuration: {
+      registries: [
+        {
+          server: 'bladdertracker.azurecr.io'
+          username: 'bladdertracker' // Usually same as registry name
+          passwordSecretRef: 'acr-password'
+        }
+      ]
       ingress: {
         external: true
-        targetPort: 80  // nginx port
+        targetPort: 80 // nginx port
         allowInsecure: false
         traffic: [
           {
@@ -110,6 +121,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
         {
           name: 'postgres-password'
           value: dbPassword
+        }
+        {
+          name: 'acr-password'
+          value: acrPassword
         }
       ]
     }
