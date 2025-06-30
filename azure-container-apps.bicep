@@ -208,8 +208,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       volumes: [
         {
           name: 'postgres-data'
-          storageType: 'AzureFile'
-          storageName: 'postgres-storage'
+          storageType: 'EmptyDir'
         }
       ]
       scale: {
