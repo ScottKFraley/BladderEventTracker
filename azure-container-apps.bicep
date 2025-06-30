@@ -176,34 +176,6 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             }
           ]
         }
-        {
-          name: 'database'
-          image: 'postgres:15'
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: [
-            {
-              name: 'POSTGRES_USER'
-              value: 'postgres'
-            }
-            {
-              name: 'POSTGRES_PASSWORD'
-              secretRef: 'postgres-password'
-            }
-            {
-              name: 'POSTGRES_DB'
-              value: 'BETrackingDb'
-            }
-          ]
-          volumeMounts: [
-            {
-              volumeName: 'postgres-data'
-              mountPath: '/var/lib/postgresql/data'
-            }
-          ]
-        }
       ]
       volumes: [
         {
