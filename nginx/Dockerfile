@@ -22,7 +22,8 @@ RUN rm -rf /usr/share/nginx/html/*
 # Copy built Angular app from build stage
 COPY --from=frontend-build /app/dist/bladder-event-tracker /usr/share/nginx/html
 
-# Set permissions
+# Set proper permissions
+RUN chmod -R 755 /usr/share/nginx/html
 RUN chown -R nginx:nginx /usr/share/nginx/html
 
 # Health check
