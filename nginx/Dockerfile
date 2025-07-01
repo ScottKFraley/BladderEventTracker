@@ -16,6 +16,9 @@ FROM nginx:alpine
 # Copy nginx configuration
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
+# Remove default nginx files
+RUN rm -rf /usr/share/nginx/html/*
+
 # Copy built Angular app from build stage
 COPY --from=frontend-build /app/dist/bladder-event-tracker /usr/share/nginx/html
 
