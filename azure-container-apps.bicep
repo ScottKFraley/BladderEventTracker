@@ -176,6 +176,42 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             }
           ]
         }
+        {
+          name: 'database'
+          image: 'postgres:15-alpine'
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          env: [
+            {
+              name: 'POSTGRES_USER'
+              value: 'postgres'
+            }
+            {
+              name: 'POSTGRES_PASSWORD'
+              secretRef: 'postgres-password'
+            }
+            {
+              name: 'POSTGRES_DB'
+              value: 'BETrackingDb'
+            }
+            {
+              name: 'PGUSER'
+              value: 'postgres'
+            }
+            {
+              name: 'POSTGRES_INITDB_ARGS'
+              value: '--auth-host=scram-sha-256'
+            }
+          ]
+          volumeMounts: [
+            {
+              volumeName: 'postgres-data'
+              mountPath: '/var/lib/postgresql/data'
+            }
+          ]
+        }
       ]
       volumes: [
         {
