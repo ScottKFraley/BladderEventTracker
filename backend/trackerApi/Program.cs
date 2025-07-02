@@ -52,9 +52,9 @@ try
 
         if (isRunningInContainer)
         {
-            // In container - listen on port 80 on all interfaces
-            serverOptions.ListenAnyIP(80);
-            Log.Information("Configuring Kestrel for container environment on port 80");
+            // In container - listen on port 5000 on all interfaces
+            serverOptions.ListenAnyIP(5000);
+            Log.Information("Configuring Kestrel for container environment on port 5000");
         }
         else
         {
