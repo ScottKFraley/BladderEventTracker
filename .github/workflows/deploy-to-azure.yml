@@ -47,7 +47,7 @@ jobs:
         push: true
         tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:${{ github.sha }},
               ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:latest
-              
+
     - name: Deploy using Bicep
       run: |
         echo "Registry Name: ${{ env.REGISTRY_NAME }}"

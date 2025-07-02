@@ -19,8 +19,8 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 # Remove default nginx files
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built Angular app from build stage
-COPY --from=frontend-build /app/dist/bladder-event-tracker /usr/share/nginx/html
+# Copy built Angular app from build stage - note the browser/* pattern
+COPY --from=frontend-build /app/dist/bladder-event-tracker/browser /usr/share/nginx/html
 
 # Set proper permissions
 RUN chmod -R 755 /usr/share/nginx/html
