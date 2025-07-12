@@ -204,6 +204,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               name: 'POSTGRES_INITDB_ARGS'
               value: '--auth-host=scram-sha-256'
             }
+            {
+              name: 'PGDATA'
+              value: '/var/lib/postgresql/data/pgdata' // Use subdirectory
+            }
           ]
           volumeMounts: [
             {
@@ -216,7 +220,8 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       volumes: [
         {
           name: 'postgres-data'
-          storageType: 'EmptyDir'
+          storageType: 'AzureFile'
+          storageName: 'postgres-storage'
         }
       ]
       scale: {
