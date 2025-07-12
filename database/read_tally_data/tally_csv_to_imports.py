@@ -51,7 +51,7 @@ def format_datetime(date_str, time_str):
 def start_parsing_datafile(input_file):
     try:
         # The UUID for the user
-        USER_ID = "8e3ddf21-4153-4838-abc6-47d553a5d905"
+        USER_ID = "d8acebc2-d21c-439b-a324-d882e65ec596"
         
         # Output file name based on input file
         output_file = input_file.rsplit('.', 1)[0] + "_output.sql"
