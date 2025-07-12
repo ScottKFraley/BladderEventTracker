@@ -228,6 +228,11 @@ try
             Log.Information("Attempting to connect to database...");
             await context.Database.CanConnectAsync();
             Log.Information("Database connection successful");
+
+            // Add this:
+            Log.Information("Running database migrations...");
+            await context.Database.MigrateAsync();
+            Log.Information("Database migrations completed");
         }
         catch (Exception ex)
         {
