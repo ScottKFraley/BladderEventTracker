@@ -56,6 +56,7 @@ jobs:
           az deployment group create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --template-file azure-container-apps.bicep \
-          --parameters dbPassword='${{ secrets.DB_PASSWORD }}' \
+          --parameters sqlAdminPassword='${{ secrets.SQL_ADMIN_PASSWORD }}' \
+          sqlAdminLogin='${{ secrets.SQL_ADMIN_LOGIN }}' \
           containerRegistryName=${{ env.REGISTRY_NAME }} \
           acrPassword='${{ secrets.ACR_PASSWORD }}'
