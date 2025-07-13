@@ -67,7 +67,7 @@ public class DatabaseFixture : IAsyncLifetime
         _logger.LogInformation("Using database configuration from: {ConfigPath}", Directory.GetCurrentDirectory());
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseSqlServer(connectionString);
 
         Context = new AppDbContext(optionsBuilder.Options, _logger);
     }

@@ -209,15 +209,17 @@ try
                     .AllowCredentials();
             });
 
-        options.AddPolicy("ProductionPolicy",
-            builder =>
+        var corsOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>();
+        if (corsOrigins?.Length > 0)
+        {
+            options.AddPolicy("ProductionPolicy", builder =>
             {
-                builder
-                    .WithOrigins("https://your-production-domain.com")
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials();
+                builder.WithOrigins(corsOrigins)
+                       .AllowAnyMethod()
+                       .AllowAnyHeader()
+                       .AllowCredentials();
             });
+        }
     });
 
     Log.Information("Application built successfully. Calling '...builder.Build()'");
