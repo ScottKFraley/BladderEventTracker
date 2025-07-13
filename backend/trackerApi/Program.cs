@@ -147,36 +147,40 @@ try
         builder.Configuration.AddUserSecrets<Program>();
     }
 
-    // these next three lines must go BEFORE the context registration
-    // Get the base connection string
+    // Get the connection string for SQL Server
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
     Log.Information("Connection string value: {ConnectionString}", connectionString ?? "null (not found!)");
 
-    // Get the password from secrets
-    var dbPassword = builder.Configuration["DbPassword"] ??
-                    builder.Configuration["PG_PASSWORD"] ??
-                    builder.Configuration["DB_PASSWORD"];
-
-    Log.Information("Connection string before password: {ConnectionString}",
-        connectionString?.Replace(dbPassword ?? "", "[REDACTED]"));
-
-    if (string.IsNullOrEmpty(dbPassword))
+    if (string.IsNullOrEmpty(connectionString))
     {
         throw new InvalidOperationException(
-            "Database password not found in configuration. " +
-            "Ensure DbPassword is set in user secrets or PG_PASSWORD in environment variables.");
+            "Database connection string not found in configuration. " +
+            "Ensure DefaultConnection is set in appsettings.json.");
+    }
+
+    // Get the SQL password from environment variables, user secrets, or configuration
+    var sqlPassword = builder.Configuration["SqlPassword"] ??
+                     builder.Configuration["SQL_PASSWORD"] ??
+                     Environment.GetEnvironmentVariable("SqlPassword") ??
+                     Environment.GetEnvironmentVariable("SQL_PASSWORD");
+
+    if (string.IsNullOrEmpty(sqlPassword))
+    {
+        throw new InvalidOperationException(
+            "SQL password not found in configuration. " +
+            "Ensure SqlPassword is set in user secrets or SQL_PASSWORD in environment variables.");
     }
 
     // Replace the placeholder with actual password
-    connectionString = connectionString!.Replace("${DbPassword}", dbPassword);
+    connectionString = connectionString.Replace("${SqlPassword}", sqlPassword);
 
     Log.Information("Connection string configured (password redacted): {ConnectionString}",
-        connectionString.Replace(dbPassword, "[REDACTED]"));
+        connectionString.Replace(sqlPassword, "[REDACTED]"));
 
-    // Then use this connection string in your DbContext registration
+    // Register DbContext with SQL Server
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString)
+        options.UseSqlServer(connectionString)
     );
 
     //

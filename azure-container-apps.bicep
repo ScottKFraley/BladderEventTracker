@@ -13,12 +13,15 @@ param logAnalyticsWorkspaceName string = 'bladder-tracker-logs'
 @description('Specifies the name of the container registry.')
 param containerRegistryName string = 'bladdertracker'
 
-@description('Specifies the name of the storage account for PostgreSQL data.')
-param storageAccountName string = 'btstor${uniqueString(resourceGroup().id)}'
+@description('Specifies the name of the Azure SQL Server.')
+param sqlServerName string = 'bladder-tracker-sql-${uniqueString(resourceGroup().id)}'
 
-@description('Specifies the password for the PostgreSQL database.')
+@description('Specifies the administrator login for the SQL server.')
+param sqlAdminLogin string = 'sqladmin'
+
+@description('Specifies the password for the SQL administrator.')
 @secure()
-param dbPassword string
+param sqlAdminPassword string
 
 @secure()
 @description('Azure Container Registry admin password')
@@ -54,41 +57,42 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-10-01' 
   }
 }
 
-// Create Storage Account for PostgreSQL data
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: storageAccountName
+// Create Azure SQL Server
+resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
+  name: sqlServerName
+  location: location
+  properties: {
+    administratorLogin: sqlAdminLogin
+    administratorLoginPassword: sqlAdminPassword
+    version: '12.0'
+    minimalTlsVersion: '1.2'
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+// Create SQL Database
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
+  parent: sqlServer
+  name: 'BETrackingDb'
   location: location
   sku: {
-    name: 'Standard_LRS'
+    name: 'Basic'
+    tier: 'Basic'
+    capacity: 5
   }
-  kind: 'StorageV2'
   properties: {
-    accessTier: 'Hot'
-    supportsHttpsTrafficOnly: true
-    minimumTlsVersion: 'TLS1_2'
-  }
-}
-
-// Create File Share for PostgreSQL data
-resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-09-01' = {
-  name: '${storageAccount.name}/default/postgres-data'
-  properties: {
-    accessTier: 'Hot'
-    shareQuota: 100
+    collation: 'SQL_Latin1_General_CP1_CI_AS'
+    maxSizeBytes: 2147483648 // 2GB
   }
 }
 
-// Add storage to Container App Environment
-resource storage 'Microsoft.App/managedEnvironments/storages@2022-10-01' = {
-  parent: containerAppEnvironment
-  name: 'postgres-storage'
+// Allow Azure services to access the SQL server
+resource sqlServerFirewallRule 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
+  parent: sqlServer
+  name: 'AllowAllWindowsAzureIps'
   properties: {
-    azureFile: {
-      accountName: storageAccount.name
-      accountKey: storageAccount.listKeys().keys[0].value
-      shareName: 'postgres-data'
-      accessMode: 'ReadWrite'
-    }
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
   }
 }
 
@@ -119,8 +123,8 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       }
       secrets: [
         {
-          name: 'postgres-password'
-          value: dbPassword
+          name: 'sql-connection-string'
+          value: 'Server=${sqlServer.properties.fullyQualifiedDomainName};Database=BETrackingDb;User Id=${sqlAdminLogin};Password=${sqlAdminPassword};TrustServerCertificate=true;'
         }
         {
           name: 'acr-password'
@@ -155,73 +159,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               value: 'http://+:5000'
             }
             {
-              name: 'PG_DATABASE'
-              value: 'BETrackingDb'
-            }
-            {
-              name: 'PG_USER'
-              value: 'postgres'
-            }
-            {
-              name: 'PG_HOST'
-              value: 'localhost'
-            }
-            {
-              name: 'PG_PORT'
-              value: '5432'
-            }
-            {
-              name: 'PG_PASSWORD'
-              secretRef: 'postgres-password'
+              name: 'ConnectionStrings__DefaultConnection'
+              secretRef: 'sql-connection-string'
             }
           ]
-        }
-        {
-          name: 'database'
-          image: 'postgres:15-alpine'
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: [
-            {
-              name: 'POSTGRES_USER'
-              value: 'postgres'
-            }
-            {
-              name: 'POSTGRES_PASSWORD'
-              secretRef: 'postgres-password'
-            }
-            {
-              name: 'POSTGRES_DB'
-              value: 'BETrackingDb'
-            }
-            {
-              name: 'PGUSER'
-              value: 'postgres'
-            }
-            {
-              name: 'POSTGRES_INITDB_ARGS'
-              value: '--auth-host=scram-sha-256'
-            }
-            {
-              name: 'PGDATA'
-              value: '/var/lib/postgresql/data/pgdata' // Use subdirectory
-            }
-          ]
-          volumeMounts: [
-            {
-              volumeName: 'postgres-data'
-              mountPath: '/var/lib/postgresql/data'
-            }
-          ]
-        }
-      ]
-      volumes: [
-        {
-          name: 'postgres-data'
-          storageType: 'AzureFile'
-          storageName: 'postgres-storage'
         }
       ]
       scale: {
@@ -241,9 +182,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
     }
   }
   dependsOn: [
-    storage
+    sqlDatabase
   ]
 }
 
 output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
-output storageAccountName string = storageAccount.name
+output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
+output sqlDatabaseName string = sqlDatabase.name
