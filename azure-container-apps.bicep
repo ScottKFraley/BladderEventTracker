@@ -127,6 +127,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
           value: 'Server=${sqlServer.properties.fullyQualifiedDomainName};Database=BETrackingDb;User Id=${sqlAdminLogin};Password=${sqlAdminPassword};TrustServerCertificate=true;'
         }
         {
+          name: 'sql-password'
+          value: sqlAdminPassword // This should be the parameter from your Bicep
+        }
+        {
           name: 'acr-password'
           value: acrPassword
         }
@@ -161,6 +165,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             {
               name: 'ConnectionStrings__DefaultConnection'
               secretRef: 'sql-connection-string'
+            }
+            {
+              name: 'SQL_PASSWORD'
+              secretRef: 'sql-password'
             }
           ]
         }
