@@ -71,18 +71,24 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
 }
 
 // Create SQL Database
-resource sqlDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2024-05-01-preview' = {
   parent: sqlServer
   name: 'BETrackingDb'
   location: location
   sku: {
-    name: 'Basic'
-    tier: 'Basic'
-    capacity: 5
+    name: 'GP_S_Gen5_2' // The _2 is for 2 vCore capacity
+    tier: 'GeneralPurpose'
+    family: 'Gen5'
+    capacity: 2
   }
   properties: {
     collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: 2147483648 // 2GB
+    maxSizeBytes: 34359738368 // 32GB
+    autoPauseDelay: 60
+    minCapacity: json('0.5')
+    useFreeLimit: true
+    freeLimitExhaustionBehavior: 'BillOverUsage'
+    requestedBackupStorageRedundancy: 'Local'
   }
 }
 
