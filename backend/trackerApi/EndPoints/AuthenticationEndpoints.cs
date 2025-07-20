@@ -1,5 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
+using Serilog;
+
+using System.Security.Cryptography;
+
 using trackerApi.DbContext;
 using trackerApi.Models;
 using trackerApi.Services;
@@ -16,15 +20,21 @@ public static class AuthenticationEndpoints
             ITokenService tokenService,
             LoginDto loginDto) =>
             {
+                Log.Information("Login attempt for user: {Username}", loginDto.Username);
+
                 var user = await context.Users
                     .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
-                if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+                if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
                 {
+                    Log.Information("Password verification result: Failed for user {Username}", loginDto.Username);
                     return Results.Unauthorized();
                 }
 
+                Log.Information("Password verification successful for user {Username}", loginDto.Username);
                 var token = await tokenService.GenerateToken(user: user);
+
+                Log.Information("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
 
                 return Results.Ok(new { Token = token });
             })
@@ -47,7 +57,7 @@ public static class AuthenticationEndpoints
         //    varuser = newUser
         //            {
         //        Username = registerDto.Username,
-        //        PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password)
+        //        PasswordHash = HashPassword(registerDto.Password)
         //    };
         //    context.Users.Add(user);
         //    awaitcontext.SaveChangesAsync();
@@ -83,5 +93,29 @@ public static class AuthenticationEndpoints
         var token = await tokenService.GenerateToken(username: username);
 
         return Results.Ok(new { token });
+    }
+
+    /// <summary>
+    /// Verifies a password against a stored SHA256 hash.
+    /// </summary>
+    /// <param name="password">The plain text password to verify</param>
+    /// <param name="storedHash">The stored SHA256 hash in uppercase hex format</param>
+    /// <returns>True if the password matches the hash</returns>
+    private static bool VerifyPassword(string password, string storedHash)
+    {
+        var inputHash = HashPassword(password);
+        return string.Equals(inputHash, storedHash, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Hashes a password using SHA256 and returns the uppercase hex string.
+    /// </summary>
+    /// <param name="password">The plain text password to hash</param>
+    /// <returns>The SHA256 hash as an uppercase hex string</returns>
+    private static string HashPassword(string password)
+    {
+        var passwordBytes = System.Text.Encoding.UTF8.GetBytes(password);
+        var hashBytes = SHA256.HashData(passwordBytes);
+        return Convert.ToHexString(hashBytes);
     }
 }

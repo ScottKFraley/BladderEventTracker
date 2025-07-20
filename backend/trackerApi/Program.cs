@@ -16,6 +16,7 @@ using trackerApi.Services;
 // 1. Logger bootstrap so that I have the ability to log early startup/bootstrapping issues.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
+    .WriteTo.Debug()
     //.WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
@@ -148,9 +149,9 @@ try
     }
 
     // Get the connection string for SQL Server
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-    Log.Information("Connection string value: {ConnectionString}", connectionString ?? "null (not found!)");
+    var connectionString = ConnectionStringHelper.ProcessConnectionString(
+        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        builder.Configuration);
 
     if (string.IsNullOrEmpty(connectionString))
     {
@@ -158,25 +159,6 @@ try
             "Database connection string not found in configuration. " +
             "Ensure DefaultConnection is set in appsettings.json.");
     }
-
-    // Get the SQL password from environment variables, user secrets, or configuration
-    var sqlPassword = builder.Configuration["SqlPassword"] ??
-                     builder.Configuration["SQL_PASSWORD"] ??
-                     Environment.GetEnvironmentVariable("SqlPassword") ??
-                     Environment.GetEnvironmentVariable("SQL_PASSWORD");
-
-    if (string.IsNullOrEmpty(sqlPassword))
-    {
-        throw new InvalidOperationException(
-            "SQL password not found in configuration. " +
-            "Ensure SqlPassword is set in user secrets or SQL_PASSWORD in environment variables.");
-    }
-
-    // Replace the placeholder with actual password
-    connectionString = connectionString.Replace("${SqlPassword}", sqlPassword);
-
-    Log.Information("Connection string configured (password redacted): {ConnectionString}",
-        connectionString.Replace(sqlPassword, "[REDACTED]"));
 
     // Register DbContext with SQL Server
     builder.Services.AddDbContext<AppDbContext>(options =>

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 using trackerApi.Models;
+using trackerApi.Services;
 
 public class AppDbContext : DbContext
 {
@@ -23,7 +24,7 @@ public class AppDbContext : DbContext
         _logger.LogInformation("DbContext instance created");
     }
 
-    public DbSet<Models.TrackingLogItem> TrackingLogs { get; set; }
+    public DbSet<TrackingLogItem> TrackingLogs { get; set; }
 
     public DbSet<User> Users { get; set; }
 
@@ -91,10 +92,19 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("NEWID()");
 
+            // Configure Username
+            entity.Property(e => e.Username)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            // Configure PasswordHash
+            entity.Property(e => e.PasswordHash)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired();
+
             // Configure default values for timestamps
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("GETDATE()");
-
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("GETDATE()")
                 .ValueGeneratedOnUpdate(); // Update on row modification
@@ -146,7 +156,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddUserSecrets<AppDbContextFactory>()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var connectionString = ConnectionStringHelper.ProcessConnectionString(
+            configuration.GetConnectionString("DefaultConnection")!,
+            configuration);
 
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -154,22 +166,6 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
                 "Database connection string not found in configuration. " +
                 "Ensure DefaultConnection is set in appsettings.json.");
         }
-
-        // Get the SQL password from configuration or environment variables
-        var sqlPassword = configuration["SqlPassword"] ??
-                         configuration["SQL_PASSWORD"] ??
-                         Environment.GetEnvironmentVariable("SqlPassword") ??
-                         Environment.GetEnvironmentVariable("SQL_PASSWORD");
-
-        if (string.IsNullOrEmpty(sqlPassword))
-        {
-            throw new InvalidOperationException(
-                "SQL password not found in configuration. " +
-                "Ensure SqlPassword is set in user secrets or SQL_PASSWORD in environment variables.");
-        }
-
-        // Replace the placeholder with actual password
-        connectionString = connectionString.Replace("${SqlPassword}", sqlPassword);
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseSqlServer(connectionString);

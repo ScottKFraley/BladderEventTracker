@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
 using dotenv.net;
 
 namespace trackerApi.IntegrationTests.Fixtures;
@@ -92,7 +93,7 @@ public class DatabaseFixture : IAsyncLifetime
             Context.Users.Add(new User
             {
                 Username = "testuser",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("testpassword")
+                PasswordHash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("testpassword")))
             });
             await Context.SaveChangesAsync();
         }
