@@ -14,6 +14,8 @@ using trackerApi.Services;
 
 
 // 1. Logger bootstrap so that I have the ability to log early startup/bootstrapping issues.
+// The bootstrap logger (line 17) is meant for early startup logging, then
+// gets replaced by the host logger configuration. -Per Claude.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.Debug()
@@ -73,6 +75,7 @@ try
     {
         configuration
             .WriteTo.Console()
+            .WriteTo.Debug()
             .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
             .MinimumLevel.Information()
             .Enrich.FromLogContext();

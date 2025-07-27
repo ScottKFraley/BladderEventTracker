@@ -18,23 +18,24 @@ public static class AuthenticationEndpoints
             AppDbContext context,
             IConfiguration config,
             ITokenService tokenService,
-            LoginDto loginDto) =>
+            LoginDto loginDto,
+            ILogger<Program> logger) =>
             {
-                Log.Information("Login attempt for user: {Username}", loginDto.Username);
+                logger.LogInformation("Login attempt for user: {Username}", loginDto.Username);
 
                 var user = await context.Users
                     .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
                 if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
                 {
-                    Log.Information("Password verification result: Failed for user {Username}", loginDto.Username);
+                    logger.LogInformation("Password verification result: Failed for user {Username}", loginDto.Username);
                     return Results.Unauthorized();
                 }
 
-                Log.Information("Password verification successful for user {Username}", loginDto.Username);
+                logger.LogInformation("Password verification successful for user {Username}", loginDto.Username);
                 var token = await tokenService.GenerateToken(user: user);
 
-                Log.Information("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
+                logger.LogInformation("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
 
                 return Results.Ok(new { Token = token });
             })
