@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
 
 using Moq;
 using Moq.EntityFrameworkCore;
@@ -46,7 +47,7 @@ public class AuthenticationEndpointsTests
     public async Task Login_WithValidCredentials_ReturnsOkWithToken()
     {
         // Arrange
-        var hashedPassword = BCrypt.Net.BCrypt.HashPassword("password123");
+        var hashedPassword = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("password123")));
         var testUser = new User
         {
             Id = Guid.NewGuid(),
@@ -140,7 +141,7 @@ public class AuthenticationEndpointsTests
         var user = await context.Set<User>()
             .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
-        if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+        if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
         {
             return Results.Unauthorized();
         }
@@ -170,5 +171,17 @@ public class AuthenticationEndpointsTests
 
         return tokenProperty.GetValue(value)?.ToString()
             ?? throw new InvalidOperationException("Token value is null");
+    }
+
+    /// <summary>
+    /// Verifies a password against a stored SHA256 hash.
+    /// </summary>
+    /// <param name="password">The plain text password to verify</param>
+    /// <param name="storedHash">The stored SHA256 hash in uppercase hex format</param>
+    /// <returns>True if the password matches the hash</returns>
+    private static bool VerifyPassword(string password, string storedHash)
+    {
+        var inputHash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(password)));
+        return string.Equals(inputHash, storedHash, StringComparison.OrdinalIgnoreCase);
     }
 }

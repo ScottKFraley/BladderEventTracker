@@ -10,12 +10,18 @@
 database/backup.sql
 database/backups/**/*.sql
 database/data*.csv
-database/Bladder_Event_Log_Submissions*.csv
-database/Bladder_Event_Log_Submissions*.sql
+**/Bladder_Event_Log_Submission*
+**/*Bladder_Event_Log_Submission*
+**/Bladder Event Log_Submission*
+**/*Bladder Event Log_Submission*
 db_backups/
 **/*.dat
 **/*.psql
 **/*.pgsql
+
+# Generated SQL output files from data processing
+**/*_output*.sql
+**/*_part*.sql
 
 # Ignore data export files but keep schema/migration files
 **/*_backup.sql
