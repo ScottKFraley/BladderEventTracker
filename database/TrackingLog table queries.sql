@@ -20,10 +20,3 @@ WHERE "EventDate"::date >= '2025-05-31'::date
 ORDER BY "EventDate" DESC;
 
 -- 
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- UPDATE public."Users" SET "PasswordHash" = crypt('new_pass', gen_salt('bf'))
--- WHERE "Id"='8e3ddf21-4153-4838-abc6-47d553a5d905';
-
--- SELECT * FROM public."Users";
