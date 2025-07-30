@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
 
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+
     /// <summary>
     /// Adding this in order to rename the table from TrackingLogs to simply
     /// TrackingLog, let alone all the other reasons I may end up needed this
@@ -112,6 +114,49 @@ public class AppDbContext : DbContext
             // for IsAdmin
             entity.Property(e => e.IsAdmin)
                 .HasDefaultValue(false);  // Sets default value to false for new users
+        });
+
+        // RefreshTokens table
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+
+            // Configure Id as uniqueidentifier with default value
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("NEWID()");
+
+            // Configure Token
+            entity.Property(e => e.Token)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            // Configure foreign key relationship
+            entity.HasOne(rt => rt.User)
+                .WithMany()
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure default values for timestamps
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            // Configure IsRevoked default
+            entity.Property(e => e.IsRevoked)
+                .HasDefaultValue(false);
+
+            // Configure DeviceInfo
+            entity.Property(e => e.DeviceInfo)
+                .HasMaxLength(200);
+
+            // Create indexes for performance
+            entity.HasIndex(e => e.Token)
+                .HasDatabaseName("IX_RefreshTokens_Token");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_RefreshTokens_UserId");
+
+            entity.HasIndex(e => e.ExpiresAt)
+                .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
         });
     }
 
