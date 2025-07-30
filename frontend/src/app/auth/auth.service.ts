@@ -56,7 +56,8 @@ export class AuthService {
   login(credentials: LoginDto): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().login,
-      credentials
+      credentials,
+      { withCredentials: true }
     ).pipe(
       tap(response => this.handleSuccessfulAuth(response)),
       catchError(this.handleError)
@@ -77,6 +78,39 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  refreshToken(): Observable<any> {
+    return this.http.post<AuthResponse>(
+      this.apiEndpoints.getAuthEndpoints().refresh,
+      {},
+      { withCredentials: true }
+    ).pipe(
+      tap(response => this.handleSuccessfulAuth(response)),
+      catchError(this.handleError)
+    );
+  }
+
+  revokeToken(): Observable<any> {
+    return this.http.post<any>(
+      this.apiEndpoints.getAuthEndpoints().revoke,
+      {},
+      { withCredentials: true }
+    ).pipe(
+      tap(() => this.logout()),
+      catchError(this.handleError)
+    );
+  }
+
+  revokeAllTokens(): Observable<any> {
+    return this.http.post<any>(
+      this.apiEndpoints.getAuthEndpoints().revokeAll,
+      {},
+      { withCredentials: true }
+    ).pipe(
+      tap(() => this.logout()),
+      catchError(this.handleError)
+    );
   }
 
   private handleSuccessfulAuth(response: AuthResponse): void {
@@ -104,9 +138,25 @@ export class AuthService {
         this.isAuthenticatedSubject.next(true);
         this.setupTokenExpiryTimer();
       } else {
+        this.attemptRefreshTokenLogin();
+      }
+    } else {
+      this.attemptRefreshTokenLogin();
+    }
+  }
+
+  private attemptRefreshTokenLogin(): void {
+    const subscription = this.refreshToken().subscribe({
+      next: (response) => {
+        console.log('Successfully refreshed token on startup');
+      },
+      error: (error) => {
+        console.log('No valid refresh token available on startup');
         this.logout();
       }
-    }
+    });
+    
+    this.subscriptions.add(subscription);
   }
 
   private setupTokenExpiryTimer(): void {
@@ -124,15 +174,29 @@ export class AuthService {
 
       if (timeUntilRefresh > 0) {
         this.refreshTimer = setTimeout(() => {
-          this.refreshToken();
+          this.performAutomaticRefresh();
         }, timeUntilRefresh);
       }
     }
   }
 
-  private refreshToken(): void {
+  private performAutomaticRefresh(): void {
+    const subscription = this.refreshToken().subscribe({
+      next: (response) => {
+        console.log('Automatic token refresh successful');
+      },
+      error: (error) => {
+        console.error('Automatic token refresh failed:', error);
+        this.logout();
+      }
+    });
+
+    this.subscriptions.add(subscription);
+  }
+
+  private refreshTokenLegacy(): void {
     const subscription = this.http.post<AuthResponse>(
-      this.apiEndpoints.getAuthEndpoints().refresh,
+      this.apiEndpoints.getAuthEndpoints().token,
       {}
     ).pipe(
       tap(response => this.handleSuccessfulAuth(response)),
