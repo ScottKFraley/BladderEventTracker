@@ -1,23 +1,37 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Moq;
+using System.Diagnostics.CodeAnalysis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Moq;
-using trackerApi.Services;
+using trackerApi.DbContext;
 using trackerApi.Models;
-using System.Diagnostics.CodeAnalysis;
+using trackerApi.Services;
 
 namespace trackerApi.UnitTests;
 
 [ExcludeFromCodeCoverage]
-public class TokenServiceTests
+public class TokenServiceTests : IDisposable
 {
+    private readonly AppDbContext _dbContext;
     private readonly IConfiguration _configuration;
     private readonly Mock<IUserService> _mockUserService;
     private readonly TokenService _tokenService;
     private readonly User _testUser;
+    private bool _disposed = false;
 
     public TokenServiceTests()
     {
+        // Setup in-memory database
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        // Create a mock logger for AppDbContext
+        var mockLogger = new Mock<ILogger<AppDbContext>>();
+        _dbContext = new AppDbContext(options, mockLogger.Object);
+
         // Setup configuration
         var initialData = new[]
         {
@@ -34,8 +48,8 @@ public class TokenServiceTests
         // Setup mock user service
         _mockUserService = new Mock<IUserService>();
 
-        // Initialize TokenService with both dependencies
-        _tokenService = new TokenService(_configuration, _mockUserService.Object);
+        // Initialize TokenService with all three dependencies
+        _tokenService = new TokenService(_configuration, _mockUserService.Object, _dbContext);
 
         // Initialize test user with all required properties
         _testUser = new User
@@ -44,8 +58,13 @@ public class TokenServiceTests
             Username = "testuser",
             PasswordHash = "hashedpassword123",
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            IsAdmin = false
         };
+
+        // Add test user to database
+        _dbContext.Users.Add(_testUser);
+        _dbContext.SaveChanges();
 
         // Setup mock user service to return test user when queried
         _mockUserService
@@ -136,7 +155,7 @@ public class TokenServiceTests
             .AddInMemoryCollection(customConfigData)
             .Build();
 
-        var tokenService = new TokenService(customConfig, _mockUserService.Object);
+        var tokenService = new TokenService(customConfig, _mockUserService.Object, _dbContext);
 
         // Act
         var token = await tokenService.GenerateToken(user: _testUser);
@@ -156,7 +175,7 @@ public class TokenServiceTests
             .AddInMemoryCollection([])
             .Build();
 
-        var tokenService = new TokenService(emptyConfig, _mockUserService.Object);
+        var tokenService = new TokenService(emptyConfig, _mockUserService.Object, _dbContext);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
@@ -180,4 +199,21 @@ public class TokenServiceTests
         Assert.Equal("User not found", exception.Message);
     }
 
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _dbContext?.Dispose();
+            }
+            _disposed = true;
+        }
+    }
 }

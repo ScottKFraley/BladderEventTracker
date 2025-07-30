@@ -15,6 +15,7 @@ public static class AuthenticationEndpoints
     public static void MapAuthEndpoints(this WebApplication app)
     {
         app.MapPost("/api/v1/auth/login", async (
+            HttpContext httpContext,
             AppDbContext context,
             IConfiguration config,
             ITokenService tokenService,
@@ -37,6 +38,23 @@ public static class AuthenticationEndpoints
 
                 logger.LogInformation("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
 
+                // Generate refresh token
+                var refreshToken = await tokenService.GenerateRefreshTokenAsync(
+                    user.Id, 
+                    httpContext.Request.Headers.UserAgent.ToString());
+
+                // Set refresh token as httpOnly cookie
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(30) // 30 day expiry
+                };
+                httpContext.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+
+                logger.LogInformation("Successfully logged in user {Username} and set refresh token", loginDto.Username);
+
                 return Results.Ok(new { Token = token });
             })
         .WithName("Login")
@@ -47,7 +65,7 @@ public static class AuthenticationEndpoints
             .WithName("GenerateToken")
             .WithOpenApi();
 
-        //app.MapPost("/api/auth/register", async (
+        //app.MapPost("/api/v1/auth/register", async (
         //            AppDbContext context,
         //            RegisterDto registerDto) =>
         //{

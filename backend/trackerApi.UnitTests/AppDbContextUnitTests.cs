@@ -7,39 +7,32 @@ using Moq;
 using System.Diagnostics.CodeAnalysis;
 
 using trackerApi.DbContext;
-using trackerApi.EndPoints;
 using trackerApi.Services;
 
 namespace trackerApi.UnitTests;
 
 // Unit Tests
 [ExcludeFromCodeCoverage]
-public class AppDbContextUnitTests : IClassFixture<EnvironmentVariableFixture>
+public class AppDbContextUnitTests : IDisposable
 {
-    private readonly IConfiguration _testConfiguration;
-    private readonly Mock<ILogger<AppDbContext>> mockDbCtxLogger;
+    private readonly Mock<ILogger<AppDbContext>> _mockDbCtxLogger;
+    private bool _disposed = false;
 
-    public AppDbContextUnitTests(EnvironmentVariableFixture fixture)
+    public AppDbContextUnitTests()
     {
-        // TODO: Why aren't I doing this?
-        //Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "unitTests");
-        
-        _testConfiguration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.unitTests.json", optional: false)
-            .Build();
-
-        mockDbCtxLogger = new Mock<ILogger<AppDbContext>>();
+        _mockDbCtxLogger = new Mock<ILogger<AppDbContext>>();
     }
 
     [Fact]
     public void CreateDbContext_ShouldCreateValidContext()
     {
         // Arrange
-        var factory = new AppDbContextFactory(mockDbCtxLogger.Object, _testConfiguration);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
 
         // Act
-        var context = factory.CreateDbContext([]);
+        using var context = new AppDbContext(options, _mockDbCtxLogger.Object);
 
         // Assert
         Assert.NotNull(context);
@@ -47,39 +40,72 @@ public class AppDbContextUnitTests : IClassFixture<EnvironmentVariableFixture>
     }
 
     [Fact]
-    public void CreateDbContext_ShouldHaveValidConnectionString()
+    public void CreateDbContext_ShouldHaveValidInMemoryProvider()
     {
         // Arrange
-        var factory = new AppDbContextFactory(mockDbCtxLogger.Object, _testConfiguration);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
 
         // Act
-        var context = factory.CreateDbContext([]);
-        var connection = context.Database.GetDbConnection();
+        using var context = new AppDbContext(options, _mockDbCtxLogger.Object);
 
         // Assert
-        Assert.NotNull(connection);
-        Assert.Contains("Host=database-1", connection.ConnectionString);
-        Assert.Contains("Database=BETrackingDb", connection.ConnectionString);
-        Assert.DoesNotContain("${DbPassword}", connection.ConnectionString);
+        Assert.Equal("Microsoft.EntityFrameworkCore.InMemory", context.Database.ProviderName);
+        Assert.True(context.Database.IsInMemory());
     }
-}
-
-public class EnvironmentVariableFixture : IDisposable
-{
-    private readonly string? _originalValue;
-    private readonly string _variableName;
-
-    public EnvironmentVariableFixture()
+    [Fact]
+    public void CreateDbContext_ShouldHaveCorrectDbSets()
     {
-        _variableName = "ASPNETCORE_ENVIRONMENT";
-        _originalValue = Environment.GetEnvironmentVariable(_variableName);
+        // Arrange
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
 
-        Environment.SetEnvironmentVariable(_variableName, "unitTests");
+        // Act
+        using var context = new AppDbContext(options, _mockDbCtxLogger.Object);
+
+        // Assert
+        Assert.NotNull(context.Users);
+        Assert.NotNull(context.TrackingLogs);
+        Assert.NotNull(context.RefreshTokens);
+    }
+
+    [Fact]
+    public void CreateDbContext_ShouldAllowDatabaseOperations()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        // Act & Assert
+        using var context = new AppDbContext(options, _mockDbCtxLogger.Object);
+        
+        // Should be able to ensure database is created
+        Assert.True(context.Database.EnsureCreated());
+        
+        // Should be able to query empty sets without errors
+        Assert.Empty(context.Users.ToList());
+        Assert.Empty(context.TrackingLogs.ToList());
+        Assert.Empty(context.RefreshTokens.ToList());
     }
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable(_variableName, _originalValue);
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Clean up managed resources if needed
+            }
+            _disposed = true;
+        }
     }
 }

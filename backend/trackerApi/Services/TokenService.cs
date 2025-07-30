@@ -1,9 +1,12 @@
 ﻿using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
+using trackerApi.DbContext;
 using trackerApi.Models;
 
 namespace trackerApi.Services;
@@ -12,6 +15,7 @@ namespace trackerApi.Services;
 /// // For initial login:
 /// var loginToken = tokenService.GenerateToken(user: user);
 /// 
+/// TODO: Verify the next line of code
 /// For refresh token:
 /// var refreshToken = tokenService.GenerateToken(username: existingUsername);
 /// </summary>
@@ -19,13 +23,16 @@ public class TokenService : ITokenService
 {
     private readonly IConfiguration _configuration;
     private readonly IUserService _userService;
+    private readonly AppDbContext _dbContext;
 
     public TokenService(
         IConfiguration configuration, 
-        IUserService userService)
+        IUserService userService,
+        AppDbContext dbContext)
     {
         _configuration = configuration;
         _userService = userService;
+        _dbContext = dbContext;
     }
 
     public async Task<string> GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false)
@@ -71,6 +78,79 @@ public class TokenService : ITokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public async Task<string> GenerateRefreshTokenAsync(Guid userId, string? deviceInfo = null)
+    {
+        // Generate a cryptographically secure random token
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var refreshToken = Convert.ToBase64String(randomBytes);
+
+        // Create refresh token entity
+        var refreshTokenEntity = new RefreshToken
+        {
+            UserId = userId,
+            Token = refreshToken,
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30), // 30 days expiration
+            CreatedAt = DateTimeOffset.UtcNow,
+            DeviceInfo = deviceInfo,
+            IsRevoked = false
+        };
+
+        // Store in database
+        _dbContext.RefreshTokens.Add(refreshTokenEntity);
+        await _dbContext.SaveChangesAsync();
+
+        return refreshToken;
+    }
+
+    public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, Guid userId)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+            return false;
+
+        var tokenEntity = await _dbContext.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.UserId == userId);
+
+        if (tokenEntity == null)
+            return false;
+
+        // Check if token is expired or revoked
+        return !tokenEntity.IsRevoked && tokenEntity.ExpiresAt > DateTimeOffset.UtcNow;
+    }
+
+    public async Task RevokeRefreshTokenAsync(string refreshToken)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+            return;
+
+        var tokenEntity = await _dbContext.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+        if (tokenEntity != null)
+        {
+            tokenEntity.IsRevoked = true;
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
+    public async Task RevokeAllUserRefreshTokensAsync(Guid userId)
+    {
+        var userTokens = await _dbContext.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in userTokens)
+        {
+            token.IsRevoked = true;
+        }
+
+        if (userTokens.Any())
+        {
+            await _dbContext.SaveChangesAsync();
+        }
     }
 
     private static void GetSigningCredentials(IConfiguration config, out IConfigurationSection jwtSettings, out SigningCredentials credentials)

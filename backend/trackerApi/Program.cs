@@ -256,6 +256,9 @@ try
     Log.Information("Mapping authentication endpoints...");
     app.MapAuthEndpoints();
 
+    Log.Information("Mapping refresh token endpoints...");
+    app.MapRefreshTokenEndpoints();
+
     Log.Information("Mapping user endpoints...");
     app.MapUserEndpoints();
 
