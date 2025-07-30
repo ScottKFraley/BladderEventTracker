@@ -19,7 +19,10 @@ export class ApiEndpointsService {
   private readonly authEndpoints = {
     base: `${this.baseUrl}/auth`,
     login: `${this.baseUrl}/auth/login`,
-    refresh: `${this.baseUrl}/auth/token`,
+    token: `${this.baseUrl}/auth/token`,
+    refresh: `${this.baseUrl}/auth/refresh`,
+    revoke: `${this.baseUrl}/auth/revoke`,
+    revokeAll: `${this.baseUrl}/auth/revoke-all`,
   };
 
   getByDaysAndUserEndpoint(days: number, userId: string) {

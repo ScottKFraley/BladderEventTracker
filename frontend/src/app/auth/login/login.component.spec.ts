@@ -1,10 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
+import { Component } from '@angular/core';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../auth.service';
 import { of, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+
+@Component({
+  template: '<div>Mock Dashboard</div>'
+})
+class MockDashboardComponent { }
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -18,9 +24,12 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [
         ReactiveFormsModule,
-        RouterTestingModule,
+        RouterTestingModule.withRoutes([
+          { path: 'dashboard', component: MockDashboardComponent }
+        ]),
         LoginComponent
       ],
+      declarations: [MockDashboardComponent],
       providers: [
         { provide: AuthService, useValue: authServiceSpy }
       ]
