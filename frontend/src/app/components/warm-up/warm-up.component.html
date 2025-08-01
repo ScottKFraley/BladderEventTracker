@@ -1,0 +1,56 @@
+<div class="warm-up-container">
+  <div class="warm-up-content">
+    <!-- Logo/Title -->
+    <div class="warm-up-header">
+      <h1>Bladder Tracker</h1>
+      <p class="subtitle">Initializing services...</p>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading) {
+      <div class="loading-section">
+        <!-- Spinner -->
+        <div class="spinner-container">
+          <div class="spinner"></div>
+        </div>
+        
+        <!-- Progress Message -->
+        <p class="progress-message">{{ progressMessage }}</p>
+        
+        <!-- Progress Bar -->
+        <div class="progress-bar-container">
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Error State -->
+    @if (!isLoading && showRetry) {
+      <div class="error-section">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">Service Initialization Failed</h2>
+        <p class="error-message">{{ errorMessage }}</p>
+        
+        <div class="action-buttons">
+          <button class="btn btn-primary" (click)="onRetry()">
+            <span class="btn-icon">🔄</span>
+            Try Again
+          </button>
+          <button class="btn btn-secondary" (click)="onSkip()">
+            <span class="btn-icon">⏭️</span>
+            Skip & Continue
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Footer -->
+    <div class="warm-up-footer">
+      <p class="info-text">
+        This may take a few moments while we prepare your experience...
+      </p>
+    </div>
+  </div>
+</div>

@@ -253,6 +253,10 @@ try
     app.UseAuthorization();
 
     // Map our endpoints
+    Log.Information("Mapping warm-up endpoints...");
+    app.MapWarmUpEndpoints();
+    Log.Information("Warm-up endpoints mapped successfully.");
+
     Log.Information("Mapping authentication endpoints...");
     app.MapAuthEndpoints();
 
