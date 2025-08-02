@@ -1,7 +1,8 @@
 import { Routes, provideRouter } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: '', redirectTo: '/warmup', pathMatch: 'full' },
+  { path: 'warmup', loadComponent: () => import('./components/warm-up/warm-up.component').then(m => m.WarmUpComponent) },
   { path: 'login', loadComponent: () => import('./auth/login/login.component').then(m => m.LoginComponent) },
   { path: 'dashboard', loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent) },
   { path: 'survey', loadComponent: () => import('./survey/survey.component').then(m => m.SurveyComponent) },
