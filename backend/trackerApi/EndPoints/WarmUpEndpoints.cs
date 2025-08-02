@@ -19,16 +19,14 @@ public static class WarmUpEndpoints
              .AllowAnonymous();
     }
 
-    internal static IResult HandleWarmUp(ILogger logger)
+    internal static IResult HandleWarmUp()
     {
         try
         {
-            logger.LogInformation("Warm-up request received");
             return TypedResults.NoContent(); // 204 No Content
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error processing warm-up request");
             return TypedResults.Problem("Error processing warm-up request");
         }
     }
