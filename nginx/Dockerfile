@@ -16,6 +16,10 @@ FROM nginx:alpine
 # Copy nginx configuration
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
+# Copy environment initialization script
+COPY nginx/init-env.sh /usr/local/bin/init-env.sh
+RUN chmod +x /usr/local/bin/init-env.sh
+
 # Remove default nginx files
 RUN rm -rf /usr/share/nginx/html/*
 
@@ -32,4 +36,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 EXPOSE 80
 
+# Use init script as entrypoint
+ENTRYPOINT ["/usr/local/bin/init-env.sh"]
 CMD ["nginx", "-g", "daemon off;"]

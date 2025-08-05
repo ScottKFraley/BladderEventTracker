@@ -12,11 +12,24 @@ import { trackingLogReducer } from './state/tracking-logs/tracking-log.reducer';
 import { TrackingLogEffects } from './state/tracking-logs/tracking-log.effects';
 import { TOKEN_REFRESH_THRESHOLD } from './auth/auth.config';
 import { AuthService } from './auth/auth.service';
+import { ApplicationInsightsService } from './services/application-insights.service';
 import { take } from 'rxjs/operators';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: TOKEN_REFRESH_THRESHOLD, useValue: 300000 },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (appInsights: ApplicationInsightsService) => {
+        return () => {
+          // Initialize Application Insights
+          console.log('Initializing Application Insights...');
+          return Promise.resolve();
+        };
+      },
+      deps: [ApplicationInsightsService],
+      multi: true
+    },
     {
       provide: APP_INITIALIZER,
       useFactory: (authService: AuthService, router: Router) => {

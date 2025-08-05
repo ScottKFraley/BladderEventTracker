@@ -1,8 +1,11 @@
 namespace trackerApi.DbContext;
 
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Migrations;
+using System.Diagnostics;
 
 using trackerApi.Models;
 using trackerApi.Services;
@@ -10,11 +13,13 @@ using trackerApi.Services;
 public class AppDbContext : DbContext
 {
     private readonly ILogger<AppDbContext> _logger;
+    private readonly TelemetryClient? _telemetryClient;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, ILogger<AppDbContext> logger)
+    public AppDbContext(DbContextOptions<AppDbContext> options, ILogger<AppDbContext> logger, TelemetryClient? telemetryClient = null)
         : base(options)
     {
         _logger = logger;
+        _telemetryClient = telemetryClient;
         _logger.LogInformation("DbContext instance created");
     }
 
@@ -158,6 +163,50 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ExpiresAt)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
         });
+    }
+
+    public override int SaveChanges()
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var result = base.SaveChanges();
+            stopwatch.Stop();
+            
+            _telemetryClient?.TrackDependency("Database", "SaveChanges", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, true);
+            _telemetryClient?.TrackMetric("Database.SaveChanges.Duration", stopwatch.ElapsedMilliseconds);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _telemetryClient?.TrackDependency("Database", "SaveChanges", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, false);
+            _telemetryClient?.TrackException(ex);
+            throw;
+        }
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var result = await base.SaveChangesAsync(cancellationToken);
+            stopwatch.Stop();
+            
+            _telemetryClient?.TrackDependency("Database", "SaveChangesAsync", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, true);
+            _telemetryClient?.TrackMetric("Database.SaveChangesAsync.Duration", stopwatch.ElapsedMilliseconds);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _telemetryClient?.TrackDependency("Database", "SaveChangesAsync", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, false);
+            _telemetryClient?.TrackException(ex);
+            throw;
+        }
     }
 
     public override void Dispose()
