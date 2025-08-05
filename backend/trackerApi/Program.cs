@@ -1,9 +1,11 @@
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 using Serilog;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 using System;
 using System.Text;
@@ -78,14 +80,30 @@ try
         }
     });
 
-    builder.Host.UseSerilog((context, configuration) =>
+    builder.Host.UseSerilog((context, services, configuration) =>
     {
+        var telemetryConfiguration = services.GetService<TelemetryConfiguration>();
         configuration
             .WriteTo.Console()
             .WriteTo.Debug()
             .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.ApplicationInsights(telemetryConfiguration, new TraceTelemetryConverter())
             .MinimumLevel.Information()
-            .Enrich.FromLogContext();
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("ApplicationName", "BladderTracker-API")
+            .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+    });
+
+    // Add Application Insights telemetry services
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = builder.Configuration.GetConnectionString("ApplicationInsights");
+        options.EnableAdaptiveSampling = true;
+        options.EnableQuickPulseMetricStream = true;
+        options.EnableAuthenticationTrackingJavaScript = true;
+        options.EnableDependencyTrackingTelemetryModule = true;
+        options.EnableRequestTrackingTelemetryModule = true;
+        options.EnableEventCounterCollectionModule = true;
     });
 
     // Add services to the container.
@@ -215,9 +233,15 @@ try
     }
 
     // Register DbContext with SQL Server
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(connectionString)
-    );
+    builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+    {
+        options.UseSqlServer(connectionString);
+        // Enable sensitive data logging for development environments only
+        if (builder.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "DevVS")
+        {
+            options.EnableSensitiveDataLogging();
+        }
+    });
 
     //
     // Register the DI stuff

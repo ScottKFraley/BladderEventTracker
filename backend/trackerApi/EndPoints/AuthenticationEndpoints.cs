@@ -1,7 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.EntityFrameworkCore;
 
 using Serilog;
 
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 using trackerApi.DbContext;
@@ -20,42 +23,87 @@ public static class AuthenticationEndpoints
             IConfiguration config,
             ITokenService tokenService,
             LoginDto loginDto,
-            ILogger<Program> logger) =>
+            ILogger<Program> logger,
+            TelemetryClient telemetryClient) =>
             {
-                logger.LogInformation("Login attempt for user: {Username}", loginDto.Username);
+                var stopwatch = Stopwatch.StartNew();
+                var loginEvent = new EventTelemetry("UserLogin");
+                loginEvent.Properties["Username"] = loginDto.Username;
+                loginEvent.Properties["UserAgent"] = httpContext.Request.Headers.UserAgent.ToString();
+                loginEvent.Properties["IPAddress"] = httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
-                var user = await context.Users
-                    .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
-
-                if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+                try
                 {
-                    logger.LogInformation("Password verification result: Failed for user {Username}", loginDto.Username);
-                    return Results.Unauthorized();
+                    logger.LogInformation("Login attempt for user: {Username}", loginDto.Username);
+
+                    var user = await context.Users
+                        .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
+
+                    if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+                    {
+                        stopwatch.Stop();
+                        loginEvent.Properties["Success"] = "false";
+                        loginEvent.Properties["FailureReason"] = user == null ? "UserNotFound" : "InvalidPassword";
+                        loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                        telemetryClient.TrackEvent(loginEvent);
+                        
+                        logger.LogInformation("Password verification result: Failed for user {Username}", loginDto.Username);
+                        return Results.Unauthorized();
+                    }
+
+                    logger.LogInformation("Password verification successful for user {Username}", loginDto.Username);
+                    
+                    // Track token generation time
+                    var tokenStopwatch = Stopwatch.StartNew();
+                    var token = await tokenService.GenerateToken(user: user);
+                    tokenStopwatch.Stop();
+
+                    logger.LogInformation("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
+
+                    // Generate refresh token
+                    var refreshTokenStopwatch = Stopwatch.StartNew();
+                    var refreshToken = await tokenService.GenerateRefreshTokenAsync(
+                        user.Id, 
+                        httpContext.Request.Headers.UserAgent.ToString());
+                    refreshTokenStopwatch.Stop();
+
+                    // Set refresh token as httpOnly cookie
+                    var cookieOptions = new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddDays(30) // 30 day expiry
+                    };
+                    httpContext.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+
+                    stopwatch.Stop();
+                    loginEvent.Properties["Success"] = "true";
+                    loginEvent.Properties["UserId"] = user.Id.ToString();
+                    loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                    loginEvent.Metrics["TokenGenerationDuration"] = tokenStopwatch.ElapsedMilliseconds;
+                    loginEvent.Metrics["RefreshTokenGenerationDuration"] = refreshTokenStopwatch.ElapsedMilliseconds;
+                    telemetryClient.TrackEvent(loginEvent);
+
+                    // Track successful login metric
+                    telemetryClient.TrackMetric("Authentication.Login.Success", 1, 
+                        new Dictionary<string, string> { ["Username"] = loginDto.Username });
+
+                    logger.LogInformation("Successfully logged in user {Username} and set refresh token", loginDto.Username);
+
+                    return Results.Ok(new { Token = token });
                 }
-
-                logger.LogInformation("Password verification successful for user {Username}", loginDto.Username);
-                var token = await tokenService.GenerateToken(user: user);
-
-                logger.LogInformation("Generated token: {TokenPreview}", token?[..Math.Min(10, token.Length)]);
-
-                // Generate refresh token
-                var refreshToken = await tokenService.GenerateRefreshTokenAsync(
-                    user.Id, 
-                    httpContext.Request.Headers.UserAgent.ToString());
-
-                // Set refresh token as httpOnly cookie
-                var cookieOptions = new CookieOptions
+                catch (Exception ex)
                 {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddDays(30) // 30 day expiry
-                };
-                httpContext.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
-
-                logger.LogInformation("Successfully logged in user {Username} and set refresh token", loginDto.Username);
-
-                return Results.Ok(new { Token = token });
+                    stopwatch.Stop();
+                    loginEvent.Properties["Success"] = "false";
+                    loginEvent.Properties["FailureReason"] = "Exception";
+                    loginEvent.Properties["ExceptionMessage"] = ex.Message;
+                    loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                    telemetryClient.TrackEvent(loginEvent);
+                    telemetryClient.TrackException(ex);
+                    throw;
+                }
             })
         .WithName("Login")
         .WithOpenApi();
@@ -100,18 +148,51 @@ public static class AuthenticationEndpoints
     /// </returns>
     public static async Task<IResult> GenerateToken(
         HttpContext context,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        TelemetryClient telemetryClient)
     {
-        var username = context.User.Identity?.Name;
-
-        if (string.IsNullOrEmpty(username))
+        var stopwatch = Stopwatch.StartNew();
+        var tokenEvent = new EventTelemetry("TokenGeneration");
+        
+        try
         {
-            return Results.Unauthorized();
+            var username = context.User.Identity?.Name;
+            tokenEvent.Properties["Username"] = username ?? "Anonymous";
+            tokenEvent.Properties["UserAgent"] = context.Request.Headers.UserAgent.ToString();
+
+            if (string.IsNullOrEmpty(username))
+            {
+                stopwatch.Stop();
+                tokenEvent.Properties["Success"] = "false";
+                tokenEvent.Properties["FailureReason"] = "NoUsername";
+                tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                telemetryClient.TrackEvent(tokenEvent);
+                return Results.Unauthorized();
+            }
+
+            var token = await tokenService.GenerateToken(username: username);
+            
+            stopwatch.Stop();
+            tokenEvent.Properties["Success"] = "true";
+            tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+            telemetryClient.TrackEvent(tokenEvent);
+            
+            telemetryClient.TrackMetric("Authentication.TokenGeneration.Success", 1,
+                new Dictionary<string, string> { ["Username"] = username });
+
+            return Results.Ok(new { token });
         }
-
-        var token = await tokenService.GenerateToken(username: username);
-
-        return Results.Ok(new { token });
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            tokenEvent.Properties["Success"] = "false";
+            tokenEvent.Properties["FailureReason"] = "Exception";
+            tokenEvent.Properties["ExceptionMessage"] = ex.Message;
+            tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+            telemetryClient.TrackEvent(tokenEvent);
+            telemetryClient.TrackException(ex);
+            throw;
+        }
     }
 
     /// <summary>
