@@ -113,26 +113,6 @@ public static class AuthenticationEndpoints
             .WithName("GenerateToken")
             .WithOpenApi();
 
-        //app.MapPost("/api/v1/auth/register", async (
-        //            AppDbContext context,
-        //            RegisterDto registerDto) =>
-        //{
-        //    if (awaitcontext.Users.AnyAsync(u => u.Username == registerDto.Username))
-        //    {
-        //        returnResults.BadRequest("Username already exists");
-        //    }
-        //    varuser = newUser
-        //            {
-        //        Username = registerDto.Username,
-        //        PasswordHash = HashPassword(registerDto.Password)
-        //    };
-        //    context.Users.Add(user);
-        //    awaitcontext.SaveChangesAsync();
-        //    returnResults.Created($"/api/users/{user.Id}", user);
-        //})
-        //        .WithName("Register")
-        //        .WithOpenApi();
-
     } // end public static void MapAuthEndpoints()
 
     /// <summary>
