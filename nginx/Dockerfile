@@ -1,5 +1,5 @@
 # Build stage for frontend - use latest LTS for security
-FROM node:20-alpine as frontend-build
+FROM node:20-alpine AS frontend-build
 WORKDIR /app
 
 # Copy package files first for better caching
