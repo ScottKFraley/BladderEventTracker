@@ -1,10 +1,9 @@
 namespace trackerApi.DbContext;
 
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Migrations;
+
 using System.Diagnostics;
 
 using trackerApi.Models;
@@ -37,8 +36,7 @@ public class AppDbContext : DbContext
 
     /// <summary>
     /// Adding this in order to rename the table from TrackingLogs to simply
-    /// TrackingLog, let alone all the other reasons I may end up needed this
-    /// method.
+    /// TrackingLog, among the other reasons this method is needed.
     /// </summary>
     /// <param name="modelBuilder"></param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -173,7 +171,7 @@ public class AppDbContext : DbContext
             var result = base.SaveChanges();
             stopwatch.Stop();
             
-            _telemetryClient?.TrackDependency("Database", "SaveChanges", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, true);
+            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChanges", "EF Core SaveChanges", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "200", true);
             _telemetryClient?.TrackMetric("Database.SaveChanges.Duration", stopwatch.ElapsedMilliseconds);
             
             return result;
@@ -181,7 +179,7 @@ public class AppDbContext : DbContext
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _telemetryClient?.TrackDependency("Database", "SaveChanges", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, false);
+            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChanges", "EF Core SaveChanges", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "500", false);
             _telemetryClient?.TrackException(ex);
             throw;
         }
@@ -195,7 +193,7 @@ public class AppDbContext : DbContext
             var result = await base.SaveChangesAsync(cancellationToken);
             stopwatch.Stop();
             
-            _telemetryClient?.TrackDependency("Database", "SaveChangesAsync", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, true);
+            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChangesAsync", "EF Core SaveChangesAsync", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "200", true);
             _telemetryClient?.TrackMetric("Database.SaveChangesAsync.Duration", stopwatch.ElapsedMilliseconds);
             
             return result;
@@ -203,7 +201,7 @@ public class AppDbContext : DbContext
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _telemetryClient?.TrackDependency("Database", "SaveChangesAsync", DateTime.UtcNow.Subtract(TimeSpan.FromMilliseconds(stopwatch.ElapsedMilliseconds)), stopwatch.Elapsed, false);
+            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChangesAsync", "EF Core SaveChangesAsync", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "500", false);
             _telemetryClient?.TrackException(ex);
             throw;
         }

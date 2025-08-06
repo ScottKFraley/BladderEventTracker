@@ -166,7 +166,7 @@ public static class AuthenticationEndpoints
                 tokenEvent.Properties["Success"] = "false";
                 tokenEvent.Properties["FailureReason"] = "NoUsername";
                 tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-                telemetryClient.TrackEvent(tokenEvent);
+                telemetryClient?.TrackEvent(tokenEvent);
                 return Results.Unauthorized();
             }
 
@@ -175,9 +175,9 @@ public static class AuthenticationEndpoints
             stopwatch.Stop();
             tokenEvent.Properties["Success"] = "true";
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-            telemetryClient.TrackEvent(tokenEvent);
+            telemetryClient?.TrackEvent(tokenEvent);
             
-            telemetryClient.TrackMetric("Authentication.TokenGeneration.Success", 1,
+            telemetryClient?.TrackMetric("Authentication.TokenGeneration.Success", 1,
                 new Dictionary<string, string> { ["Username"] = username });
 
             return Results.Ok(new { token });
@@ -189,8 +189,8 @@ public static class AuthenticationEndpoints
             tokenEvent.Properties["FailureReason"] = "Exception";
             tokenEvent.Properties["ExceptionMessage"] = ex.Message;
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-            telemetryClient.TrackEvent(tokenEvent);
-            telemetryClient.TrackException(ex);
+            telemetryClient?.TrackEvent(tokenEvent);
+            telemetryClient?.TrackException(ex);
             throw;
         }
     }

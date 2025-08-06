@@ -1,9 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-using trackerApi.DbContext;
-using trackerApi.Models;
+﻿using trackerApi.Models;
 using trackerApi.Services;
 
 using System.Runtime.CompilerServices;

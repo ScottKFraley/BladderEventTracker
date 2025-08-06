@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -102,7 +103,7 @@ public class AuthenticationEndpointsTests
         httpContext.User = new ClaimsPrincipal(identity);
 
         // Act
-        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
+        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object, null!);
 
         // Assert
         Assert.Equal(200, GetStatusCodeFromResult(result));
@@ -123,7 +124,7 @@ public class AuthenticationEndpointsTests
         // Not setting any claims - empty identity
 
         // Act
-        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object);
+        var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object, null!);
 
         // Assert
         Assert.IsType<UnauthorizedHttpResult>(result);

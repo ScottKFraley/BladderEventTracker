@@ -171,9 +171,10 @@ try
             {
                 OnTokenValidated = context =>
                 {
-                    var claimsInfo = string.Join(", ", context.Principal.Claims.Select(c => $"{c.Type}={c.Value}"));
+                    var claimsInfo = string.Join(", ", context.Principal?.Claims?.Select(c => $"{c.Type}={c.Value}") ?? Enumerable.Empty<string>());
                     Log.Information("JWT Token validated successfully. User: {User}, Claims: {Claims}", 
-                        context.Principal.Identity?.Name, claimsInfo);
+                        context?.Principal?.Identity?.Name, claimsInfo);
+
                     return Task.CompletedTask;
                 },
                 OnAuthenticationFailed = context =>
@@ -181,12 +182,14 @@ try
                     Log.Error("JWT Authentication failed: {Exception}. Token: {Token}", 
                         context.Exception.Message, 
                         context.Request.Headers.Authorization.ToString().Substring(0, Math.Min(50, context.Request.Headers.Authorization.ToString().Length)) + "...");
+
                     return Task.CompletedTask;
                 },
                 OnChallenge = context =>
                 {
                     Log.Warning("JWT Challenge triggered. Error: {Error}, ErrorDescription: {ErrorDescription}", 
                         context.Error, context.ErrorDescription);
+
                     return Task.CompletedTask;
                 },
                 OnMessageReceived = context =>
@@ -201,6 +204,7 @@ try
                     {
                         Log.Information("No Authorization header found in request");
                     }
+
                     return Task.CompletedTask;
                 }
             };
