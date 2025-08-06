@@ -1,10 +1,8 @@
 namespace trackerApi.DbContext;
 
-using Microsoft.ApplicationInsights;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-using System.Diagnostics;
 
 using trackerApi.Models;
 using trackerApi.Services;
@@ -12,13 +10,11 @@ using trackerApi.Services;
 public class AppDbContext : DbContext
 {
     private readonly ILogger<AppDbContext> _logger;
-    private readonly TelemetryClient? _telemetryClient;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, ILogger<AppDbContext> logger, TelemetryClient? telemetryClient = null)
+    public AppDbContext(DbContextOptions<AppDbContext> options, ILogger<AppDbContext> logger)
         : base(options)
     {
         _logger = logger;
-        _telemetryClient = telemetryClient;
         _logger.LogInformation("DbContext instance created");
     }
 
@@ -165,44 +161,30 @@ public class AppDbContext : DbContext
 
     public override int SaveChanges()
     {
-        var stopwatch = Stopwatch.StartNew();
         try
         {
             var result = base.SaveChanges();
-            stopwatch.Stop();
-            
-            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChanges", "EF Core SaveChanges", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "200", true);
-            _telemetryClient?.TrackMetric("Database.SaveChanges.Duration", stopwatch.ElapsedMilliseconds);
-            
+            _logger.LogDebug("SaveChanges completed successfully, {ChangeCount} changes saved", result);
             return result;
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChanges", "EF Core SaveChanges", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "500", false);
-            _telemetryClient?.TrackException(ex);
+            _logger.LogError(ex, "Error occurred during SaveChanges operation");
             throw;
         }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var stopwatch = Stopwatch.StartNew();
         try
         {
             var result = await base.SaveChangesAsync(cancellationToken);
-            stopwatch.Stop();
-            
-            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChangesAsync", "EF Core SaveChangesAsync", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "200", true);
-            _telemetryClient?.TrackMetric("Database.SaveChangesAsync.Duration", stopwatch.ElapsedMilliseconds);
-            
+            _logger.LogDebug("SaveChangesAsync completed successfully, {ChangeCount} changes saved", result);
             return result;
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            _telemetryClient?.TrackDependency("Database", "localhost", "SaveChangesAsync", "EF Core SaveChangesAsync", DateTime.UtcNow.Subtract(stopwatch.Elapsed), stopwatch.Elapsed, "500", false);
-            _telemetryClient?.TrackException(ex);
+            _logger.LogError(ex, "Error occurred during SaveChangesAsync operation");
             throw;
         }
     }
