@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("trackerApi.UnitTests")]
@@ -25,7 +24,7 @@ public static class WarmUpEndpoints
         {
             return TypedResults.NoContent(); // 204 No Content
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return TypedResults.Problem("Error processing warm-up request");
         }

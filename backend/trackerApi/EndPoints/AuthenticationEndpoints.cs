@@ -113,26 +113,6 @@ public static class AuthenticationEndpoints
             .WithName("GenerateToken")
             .WithOpenApi();
 
-        //app.MapPost("/api/v1/auth/register", async (
-        //            AppDbContext context,
-        //            RegisterDto registerDto) =>
-        //{
-        //    if (awaitcontext.Users.AnyAsync(u => u.Username == registerDto.Username))
-        //    {
-        //        returnResults.BadRequest("Username already exists");
-        //    }
-        //    varuser = newUser
-        //            {
-        //        Username = registerDto.Username,
-        //        PasswordHash = HashPassword(registerDto.Password)
-        //    };
-        //    context.Users.Add(user);
-        //    awaitcontext.SaveChangesAsync();
-        //    returnResults.Created($"/api/users/{user.Id}", user);
-        //})
-        //        .WithName("Register")
-        //        .WithOpenApi();
-
     } // end public static void MapAuthEndpoints()
 
     /// <summary>
@@ -166,7 +146,7 @@ public static class AuthenticationEndpoints
                 tokenEvent.Properties["Success"] = "false";
                 tokenEvent.Properties["FailureReason"] = "NoUsername";
                 tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-                telemetryClient.TrackEvent(tokenEvent);
+                telemetryClient?.TrackEvent(tokenEvent);
                 return Results.Unauthorized();
             }
 
@@ -175,9 +155,9 @@ public static class AuthenticationEndpoints
             stopwatch.Stop();
             tokenEvent.Properties["Success"] = "true";
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-            telemetryClient.TrackEvent(tokenEvent);
+            telemetryClient?.TrackEvent(tokenEvent);
             
-            telemetryClient.TrackMetric("Authentication.TokenGeneration.Success", 1,
+            telemetryClient?.TrackMetric("Authentication.TokenGeneration.Success", 1,
                 new Dictionary<string, string> { ["Username"] = username });
 
             return Results.Ok(new { token });
@@ -189,8 +169,8 @@ public static class AuthenticationEndpoints
             tokenEvent.Properties["FailureReason"] = "Exception";
             tokenEvent.Properties["ExceptionMessage"] = ex.Message;
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
-            telemetryClient.TrackEvent(tokenEvent);
-            telemetryClient.TrackException(ex);
+            telemetryClient?.TrackEvent(tokenEvent);
+            telemetryClient?.TrackException(ex);
             throw;
         }
     }
