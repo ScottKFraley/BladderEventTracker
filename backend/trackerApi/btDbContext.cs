@@ -2,7 +2,7 @@ namespace trackerApi.DbContext;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Migrations;
+
 
 using trackerApi.Models;
 using trackerApi.Services;
@@ -32,8 +32,7 @@ public class AppDbContext : DbContext
 
     /// <summary>
     /// Adding this in order to rename the table from TrackingLogs to simply
-    /// TrackingLog, let alone all the other reasons I may end up needed this
-    /// method.
+    /// TrackingLog, among the other reasons this method is needed.
     /// </summary>
     /// <param name="modelBuilder"></param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -158,6 +157,36 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ExpiresAt)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
         });
+    }
+
+    public override int SaveChanges()
+    {
+        try
+        {
+            var result = base.SaveChanges();
+            _logger.LogDebug("SaveChanges completed successfully, {ChangeCount} changes saved", result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred during SaveChanges operation");
+            throw;
+        }
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await base.SaveChangesAsync(cancellationToken);
+            _logger.LogDebug("SaveChangesAsync completed successfully, {ChangeCount} changes saved", result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred during SaveChangesAsync operation");
+            throw;
+        }
     }
 
     public override void Dispose()

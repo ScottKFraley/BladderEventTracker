@@ -1,9 +1,11 @@
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 using Serilog;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
 using System;
 using System.Text;
@@ -35,12 +37,24 @@ try
         Log.Information("Configuration provider: {ProviderType}", provider.GetType().Name);
     }
 
-    // Check if we're running in Visual Studio by checking for the debugger
-    // You can also use an environment variable if you prefer
-    if (System.Diagnostics.Debugger.IsAttached)
+    // Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
+    var isRunningInContainer = bool.TryParse(
+        Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+        out bool inContainer) && inContainer;
+
+    // Determine environment based on container status and debugger
+    if (isRunningInContainer)
     {
+        // Running in Docker container - use Development config (with Docker connection string)
+        builder.Environment.EnvironmentName = "Development";
+        Log.Information("Running in Docker container - setting environment to: {Environment}",
+            builder.Environment.EnvironmentName);
+    }
+    else
+    {
+        // Running locally (in debugger or directly) - use DevVS config
         builder.Environment.EnvironmentName = "DevVS";
-        Log.Information("Running in Visual Studio - setting environment to: {Environment}",
+        Log.Information("Running locally - setting environment to: {Environment}",
             builder.Environment.EnvironmentName);
     }
 
@@ -48,11 +62,6 @@ try
 
     builder.WebHost.ConfigureKestrel(serverOptions =>
     {
-        // Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
-        var isRunningInContainer = bool.TryParse(
-            Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
-            out bool inContainer) && inContainer;
-
         if (isRunningInContainer)
         {
             // In container - listen on port 5000 on all interfaces
@@ -71,14 +80,30 @@ try
         }
     });
 
-    builder.Host.UseSerilog((context, configuration) =>
+    builder.Host.UseSerilog((context, services, configuration) =>
     {
+        var telemetryConfiguration = services.GetService<TelemetryConfiguration>();
         configuration
             .WriteTo.Console()
             .WriteTo.Debug()
             .WriteTo.File("logs/app.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.ApplicationInsights(telemetryConfiguration, new TraceTelemetryConverter())
             .MinimumLevel.Information()
-            .Enrich.FromLogContext();
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("ApplicationName", "BladderTracker-API")
+            .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+    });
+
+    // Add Application Insights telemetry services
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = builder.Configuration.GetConnectionString("ApplicationInsights");
+        options.EnableAdaptiveSampling = true;
+        options.EnableQuickPulseMetricStream = true;
+        options.EnableAuthenticationTrackingJavaScript = true;
+        options.EnableDependencyTrackingTelemetryModule = true;
+        options.EnableRequestTrackingTelemetryModule = true;
+        options.EnableEventCounterCollectionModule = true;
     });
 
     // Add services to the container.
@@ -124,6 +149,11 @@ try
         .AddJwtBearer(options =>
         {
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            
+            // Log JWT configuration for debugging
+            Log.Information("JWT Configuration - Issuer: {Issuer}, Audience: {Audience}, SecretKey Length: {SecretKeyLength}",
+                jwtSettings["Issuer"], jwtSettings["Audience"], jwtSettings["SecretKey"]?.Length ?? 0);
+            
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -134,6 +164,49 @@ try
                 ValidAudience = jwtSettings["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!))
+            };
+
+            // Add detailed JWT validation event logging
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    var claimsInfo = string.Join(", ", context.Principal?.Claims?.Select(c => $"{c.Type}={c.Value}") ?? Enumerable.Empty<string>());
+                    Log.Information("JWT Token validated successfully. User: {User}, Claims: {Claims}", 
+                        context?.Principal?.Identity?.Name, claimsInfo);
+
+                    return Task.CompletedTask;
+                },
+                OnAuthenticationFailed = context =>
+                {
+                    Log.Error("JWT Authentication failed: {Exception}. Token: {Token}", 
+                        context.Exception.Message, 
+                        context.Request.Headers.Authorization.ToString().Substring(0, Math.Min(50, context.Request.Headers.Authorization.ToString().Length)) + "...");
+
+                    return Task.CompletedTask;
+                },
+                OnChallenge = context =>
+                {
+                    Log.Warning("JWT Challenge triggered. Error: {Error}, ErrorDescription: {ErrorDescription}", 
+                        context.Error, context.ErrorDescription);
+
+                    return Task.CompletedTask;
+                },
+                OnMessageReceived = context =>
+                {
+                    var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+                    if (!string.IsNullOrEmpty(authHeader))
+                    {
+                        var tokenPreview = authHeader.Length > 20 ? authHeader.Substring(0, 20) + "..." : authHeader;
+                        Log.Information("JWT Token received: {TokenPreview}", tokenPreview);
+                    }
+                    else
+                    {
+                        Log.Information("No Authorization header found in request");
+                    }
+
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -164,9 +237,15 @@ try
     }
 
     // Register DbContext with SQL Server
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseSqlServer(connectionString)
-    );
+    builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+    {
+        options.UseSqlServer(connectionString);
+        // Enable sensitive data logging for development environments only
+        if (builder.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "DevVS")
+        {
+            options.EnableSensitiveDataLogging();
+        }
+    });
 
     //
     // Register the DI stuff
@@ -249,10 +328,42 @@ try
     app.UseCors(app.Environment.IsDevelopment() ? "DevelopmentPolicy" : "ProductionPolicy");
 
     app.UseHttpsRedirection();
+    
+    // Add custom middleware to log Authorization headers
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value;
+        var method = context.Request.Method;
+        
+        // Only log for non-warmup endpoints to avoid noise
+        if (!path?.Contains("/warmup") == true)
+        {
+            var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader))
+            {
+                var tokenPreview = authHeader.StartsWith("Bearer ") 
+                    ? "Bearer " + (authHeader.Length > 27 ? authHeader.Substring(7, 20) + "..." : authHeader.Substring(7))
+                    : authHeader.Substring(0, Math.Min(20, authHeader.Length)) + "...";
+                Log.Information("Request {Method} {Path} - Authorization header: {AuthHeader}", 
+                    method, path, tokenPreview);
+            }
+            else
+            {
+                Log.Information("Request {Method} {Path} - No Authorization header", method, path);
+            }
+        }
+        
+        await next();
+    });
+    
     app.UseAuthentication();
     app.UseAuthorization();
 
     // Map our endpoints
+    Log.Information("Mapping warm-up endpoints...");
+    app.MapWarmUpEndpoints();
+    Log.Information("Warm-up endpoints mapped successfully.");
+
     Log.Information("Mapping authentication endpoints...");
     app.MapAuthEndpoints();
 

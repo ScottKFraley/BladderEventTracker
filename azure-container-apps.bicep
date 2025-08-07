@@ -10,6 +10,9 @@ param containerAppEnvName string = 'bladder-tracker-env'
 @description('Specifies the name of the log analytics workspace.')
 param logAnalyticsWorkspaceName string = 'bladder-tracker-logs'
 
+@description('Specifies the name of the Application Insights instance.')
+param applicationInsightsName string = 'bladder-tracker-appinsights'
+
 @description('Specifies the name of the container registry.')
 param containerRegistryName string = 'bladdertracker'
 
@@ -39,6 +42,21 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
     features: {
       enableLogAccessUsingOnlyResourcePermissions: true
     }
+  }
+}
+
+// Create Application Insights
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: applicationInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+    IngestionMode: 'LogAnalytics'
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+    RetentionInDays: 30
   }
 }
 
@@ -140,6 +158,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
           name: 'acr-password'
           value: acrPassword
         }
+        {
+          name: 'applicationinsights-connection-string'
+          value: applicationInsights.properties.ConnectionString
+        }
       ]
     }
     template: {
@@ -151,6 +173,12 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
+          env: [
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              secretRef: 'applicationinsights-connection-string'
+            }
+          ]
         }
         {
           name: 'backend'
@@ -173,14 +201,22 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               secretRef: 'sql-connection-string'
             }
             {
+              name: 'ConnectionStrings__ApplicationInsights'
+              secretRef: 'applicationinsights-connection-string'
+            }
+            {
               name: 'SQL_PASSWORD'
               secretRef: 'sql-password'
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              secretRef: 'applicationinsights-connection-string'
             }
           ]
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 5
         rules: [
           {
@@ -203,3 +239,5 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
 output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDatabase.name
+output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString
+output applicationInsightsInstrumentationKey string = applicationInsights.properties.InstrumentationKey

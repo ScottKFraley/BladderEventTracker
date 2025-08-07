@@ -1,4 +1,7 @@
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Security.Claims;
 using trackerApi.DbContext;
 using trackerApi.Services;
@@ -13,55 +16,109 @@ public static class RefreshTokenEndpoints
             HttpContext httpContext,
             AppDbContext context,
             ITokenService tokenService,
-            ILogger<Program> logger) =>
+            ILogger<Program> logger,
+            TelemetryClient telemetryClient) =>
         {
-            logger.LogInformation("Refresh token request received");
+            var stopwatch = Stopwatch.StartNew();
+            var refreshEvent = new EventTelemetry("TokenRefresh");
+            refreshEvent.Properties["UserAgent"] = httpContext.Request.Headers.UserAgent.ToString();
+            refreshEvent.Properties["IPAddress"] = httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
-            // Get refresh token from httpOnly cookie
-            if (!httpContext.Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || 
-                string.IsNullOrEmpty(refreshToken))
+            try
             {
-                logger.LogWarning("No refresh token found in cookies");
-                return Results.Unauthorized();
+                logger.LogInformation("Refresh token request received");
+
+                // Get refresh token from httpOnly cookie
+                if (!httpContext.Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || 
+                    string.IsNullOrEmpty(refreshToken))
+                {
+                    stopwatch.Stop();
+                    refreshEvent.Properties["Success"] = "false";
+                    refreshEvent.Properties["FailureReason"] = "NoRefreshTokenCookie";
+                    refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                    telemetryClient.TrackEvent(refreshEvent);
+                    
+                    logger.LogWarning("No refresh token found in cookies");
+                    return Results.Unauthorized();
+                }
+
+                // Find the refresh token in database
+                var dbLookupStopwatch = Stopwatch.StartNew();
+                var storedToken = await context.RefreshTokens
+                    .Include(rt => rt.User)
+                    .FirstOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
+                dbLookupStopwatch.Stop();
+
+                if (storedToken == null || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
+                {
+                    stopwatch.Stop();
+                    refreshEvent.Properties["Success"] = "false";
+                    refreshEvent.Properties["FailureReason"] = storedToken == null ? "TokenNotFound" : "TokenExpired";
+                    refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                    refreshEvent.Metrics["DatabaseLookupDuration"] = dbLookupStopwatch.ElapsedMilliseconds;
+                    telemetryClient.TrackEvent(refreshEvent);
+                    
+                    logger.LogWarning("Invalid or expired refresh token");
+                    return Results.Unauthorized();
+                }
+
+                refreshEvent.Properties["UserId"] = storedToken.UserId.ToString();
+                logger.LogInformation("Valid refresh token found for user: {UserId}", storedToken.UserId);
+
+                // Generate new access token
+                var accessTokenStopwatch = Stopwatch.StartNew();
+                var newAccessToken = await tokenService.GenerateToken(user: storedToken.User);
+                accessTokenStopwatch.Stop();
+
+                // Generate new refresh token
+                var newRefreshTokenStopwatch = Stopwatch.StartNew();
+                var newRefreshToken = await tokenService.GenerateRefreshTokenAsync(
+                    storedToken.UserId, 
+                    httpContext.Request.Headers.UserAgent.ToString());
+                newRefreshTokenStopwatch.Stop();
+
+                // Revoke old refresh token
+                var revokeStopwatch = Stopwatch.StartNew();
+                await tokenService.RevokeRefreshTokenAsync(refreshToken);
+                revokeStopwatch.Stop();
+
+                // Set new refresh token as httpOnly cookie
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7) // 7 day expiry
+                };
+                httpContext.Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
+
+                stopwatch.Stop();
+                refreshEvent.Properties["Success"] = "true";
+                refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["DatabaseLookupDuration"] = dbLookupStopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["AccessTokenGenerationDuration"] = accessTokenStopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["RefreshTokenGenerationDuration"] = newRefreshTokenStopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["TokenRevokeDuration"] = revokeStopwatch.ElapsedMilliseconds;
+                telemetryClient.TrackEvent(refreshEvent);
+
+                telemetryClient.TrackMetric("Authentication.TokenRefresh.Success", 1,
+                    new Dictionary<string, string> { ["UserId"] = storedToken.UserId.ToString() });
+
+                logger.LogInformation("Successfully refreshed tokens for user: {UserId}", storedToken.UserId);
+
+                return Results.Ok(new { Token = newAccessToken });
             }
-
-            // Find the refresh token in database
-            var storedToken = await context.RefreshTokens
-                .Include(rt => rt.User)
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
-
-            if (storedToken == null || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
+            catch (Exception ex)
             {
-                logger.LogWarning("Invalid or expired refresh token");
-                return Results.Unauthorized();
+                stopwatch.Stop();
+                refreshEvent.Properties["Success"] = "false";
+                refreshEvent.Properties["FailureReason"] = "Exception";
+                refreshEvent.Properties["ExceptionMessage"] = ex.Message;
+                refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+                telemetryClient.TrackEvent(refreshEvent);
+                telemetryClient.TrackException(ex);
+                throw;
             }
-
-            logger.LogInformation("Valid refresh token found for user: {UserId}", storedToken.UserId);
-
-            // Generate new access token
-            var newAccessToken = await tokenService.GenerateToken(user: storedToken.User);
-
-            // Generate new refresh token
-            var newRefreshToken = await tokenService.GenerateRefreshTokenAsync(
-                storedToken.UserId, 
-                httpContext.Request.Headers.UserAgent.ToString());
-
-            // Revoke old refresh token
-            await tokenService.RevokeRefreshTokenAsync(refreshToken);
-
-            // Set new refresh token as httpOnly cookie
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(7) // 7 day expiry
-            };
-            httpContext.Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
-
-            logger.LogInformation("Successfully refreshed tokens for user: {UserId}", storedToken.UserId);
-
-            return Results.Ok(new { Token = newAccessToken });
         })
         .WithName("RefreshToken")
         .WithOpenApi();

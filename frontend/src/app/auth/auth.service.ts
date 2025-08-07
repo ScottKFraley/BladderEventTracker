@@ -57,6 +57,7 @@ export class AuthService {
 
   login(credentials: LoginDto): Observable<AuthResponse> {
     const startTime = performance.now();
+    
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().login,
       credentials,
@@ -100,6 +101,7 @@ export class AuthService {
 
   refreshToken(): Observable<any> {
     const startTime = performance.now();
+    
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().refresh,
       {},
@@ -253,17 +255,6 @@ export class AuthService {
     }
   }
 
-  // getCurrentUserId(): string | null {
-  //   const token = this.getToken();
-  //   if (!token) return null;
-
-  //   const decodedToken = this.decodeToken(token);
-  //   // Check for both possible claim formats
-  //   return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
-  //     decodedToken?.nameidentifier ||
-  //     decodedToken?.id ||
-  //     null;
-  // }
   getCurrentUserId(): string | null {
     const token = this.getToken();
     if (!token) return null;

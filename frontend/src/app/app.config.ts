@@ -1,4 +1,4 @@
-import { ApplicationConfig, APP_INITIALIZER, inject } from '@angular/core';
+import { ApplicationConfig, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
@@ -15,44 +15,6 @@ import { AuthService } from './auth/auth.service';
 import { ApplicationInsightsService } from './services/application-insights.service';
 import { take } from 'rxjs/operators';
 
-function initializeApp(): () => Promise<void> {
-  return () => {
-    const authService = inject(AuthService);
-    const router = inject(Router);
-    
-    return new Promise<void>((resolve) => {
-      // Check if user has valid token or can refresh
-      authService.refreshToken().pipe(
-        take(1)
-      ).subscribe({
-        next: (response) => {
-          // Refresh token succeeded, user is authenticated
-          console.log('App initialization: Refresh token succeeded');
-          
-          // Check current route
-          const currentUrl = router.url;
-          console.log('Current URL:', currentUrl);
-          
-          // If user is on login page but is authenticated, redirect to dashboard
-          if (currentUrl === '/login' || currentUrl === '/') {
-            console.log('User authenticated but on login page, redirecting to dashboard');
-            router.navigate(['/dashboard']).then(() => {
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        },
-        error: (error) => {
-          // Refresh token failed, user is not authenticated
-          console.log('App initialization: Refresh token failed, user not authenticated');
-          resolve();
-        }
-      });
-    });
-  };
-}
-
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: TOKEN_REFRESH_THRESHOLD, useValue: 300000 },
@@ -61,13 +23,51 @@ export const appConfig: ApplicationConfig = {
       useFactory: (appInsights: ApplicationInsightsService) => {
         return () => {
           // Initialize Application Insights
-          console.log('Application Insights initialized');
+          console.log('Initializing Application Insights...');
+          return Promise.resolve();
         };
       },
       deps: [ApplicationInsightsService],
       multi: true
     },
-    { provide: APP_INITIALIZER, useFactory: initializeApp, multi: true },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (authService: AuthService, router: Router) => {
+        return () => {
+          return new Promise<void>((resolve) => {
+            // Check current route - if user is directly accessing a specific route, let them proceed
+            const currentUrl = router.url;
+            console.log('App initialization - Current URL:', currentUrl);
+            
+            // If user is accessing a specific route (not root or warmup), skip warm-up initialization
+            if (currentUrl !== '/' && currentUrl !== '/warmup') {
+              console.log('User accessing specific route, performing auth check...');
+              
+              // Check if user has valid token or can refresh
+              authService.refreshToken().pipe(
+                take(1)
+              ).subscribe({
+                next: (response) => {
+                  console.log('App initialization: Refresh token succeeded for direct route access');
+                  resolve();
+                },
+                error: (error) => {
+                  console.log('App initialization: Refresh token failed for direct route access');
+                  // Don't redirect here, let the route guard handle it
+                  resolve();
+                }
+              });
+            } else {
+              // User is on root or warmup route, let the warm-up component handle initialization
+              console.log('App initialization: Allowing warm-up component to handle initialization');
+              resolve();
+            }
+          });
+        };
+      },
+      deps: [AuthService, Router],
+      multi: true
+    },
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([authInterceptor])
