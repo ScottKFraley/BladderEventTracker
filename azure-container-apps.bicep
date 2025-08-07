@@ -178,6 +178,14 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               secretRef: 'applicationinsights-connection-string'
             }
+            {
+              name: 'API_URL'
+              value: '/api'
+            }
+            {
+              name: 'PRODUCTION'
+              value: 'true'
+            }
           ]
         }
         {
