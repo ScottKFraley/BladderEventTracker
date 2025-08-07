@@ -47,8 +47,10 @@ yarn-error.log
 ./backend/trackerApi/.env
 !.env.example
 !./backend/trackerApi/.env
-
 **/set-env-vars.*
+
+# Local environment configuration (keep template, ignore processed file)
+frontend/src/assets/env.js
 
 # IDEs and editors
 .idea/
