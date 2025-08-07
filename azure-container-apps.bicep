@@ -30,6 +30,9 @@ param sqlAdminPassword string
 @description('Azure Container Registry admin password')
 param acrPassword string
 
+@description('Container image tag (usually git SHA)')
+param imageTag string
+
 // Create Log Analytics workspace
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsWorkspaceName
@@ -168,7 +171,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       containers: [
         {
           name: 'nginx'
-          image: 'bladdertracker.azurecr.io/bladder-tracker/nginx:latest'
+          image: 'bladdertracker.azurecr.io/bladder-tracker/nginx:${imageTag}'
           resources: {
             cpu: json('0.25')
             memory: '0.5Gi'
@@ -190,7 +193,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
         }
         {
           name: 'backend'
-          image: '${containerRegistryName}.azurecr.io/bladder-tracker/backend:latest'
+          image: '${containerRegistryName}.azurecr.io/bladder-tracker/backend:${imageTag}'
           resources: {
             cpu: json('0.5')
             memory: '1Gi'

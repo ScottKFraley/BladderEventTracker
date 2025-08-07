@@ -38,16 +38,14 @@ jobs:
         file: ./nginx/Dockerfile
         push: true
         no-cache: true
-        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:${{ github.sha }},
-              ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:latest
+        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:${{ github.sha }}
               
     - name: Build and push backend image
       uses: docker/build-push-action@v5
       with:
         context: ./backend/trackerApi
         push: true
-        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:${{ github.sha }},
-              ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:latest
+        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/backend:${{ github.sha }}
 
     - name: Deploy using Bicep
       run: |
@@ -59,4 +57,5 @@ jobs:
           --template-file azure-container-apps.bicep \
           --parameters sqlAdminPassword='${{ secrets.DB_PASSWORD }}' \
           containerRegistryName=${{ env.REGISTRY_NAME }} \
-          acrPassword='${{ secrets.ACR_PASSWORD }}'
+          acrPassword='${{ secrets.ACR_PASSWORD }}' \
+          imageTag=${{ github.sha }}
