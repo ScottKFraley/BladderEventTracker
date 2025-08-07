@@ -7,6 +7,7 @@ import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 // import { environment } from '../../environments/environment';
 import { ApiEndpointsService } from '../services/api-endpoints.service';
+import { ApplicationInsightsService } from '../services/application-insights.service';
 
 export interface LoginDto {
   username: string;
@@ -34,6 +35,7 @@ export class AuthService {
     private http: HttpClient,
     private router: Router,
     private apiEndpoints: ApiEndpointsService,
+    private appInsights: ApplicationInsightsService,
     @Inject(TOKEN_REFRESH_THRESHOLD) private readonly tokenRefreshThreshold: number = 300000
   ) {
     this.checkAuthStatus();
@@ -54,17 +56,33 @@ export class AuthService {
   }
 
   login(credentials: LoginDto): Observable<AuthResponse> {
+    const startTime = performance.now();
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().login,
       credentials,
       { withCredentials: true }
     ).pipe(
-      tap(response => this.handleSuccessfulAuth(response)),
-      catchError(this.handleError)
+      tap(response => {
+        const duration = performance.now() - startTime;
+        this.appInsights.trackLogin(credentials.username, true, duration);
+        this.appInsights.setAuthenticatedUser(credentials.username);
+        this.handleSuccessfulAuth(response);
+      }),
+      catchError(error => {
+        const duration = performance.now() - startTime;
+        this.appInsights.trackLogin(credentials.username, false, duration, error.message || error);
+        return this.handleError(error);
+      })
     );
   }
 
   logout(): void {
+    const currentUser = this.getCurrentUserId();
+    if (currentUser) {
+      this.appInsights.trackLogout(currentUser);
+    }
+    
+    this.appInsights.clearAuthenticatedUser();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
     this.isAuthenticatedSubject.next(false);
@@ -81,13 +99,22 @@ export class AuthService {
   }
 
   refreshToken(): Observable<any> {
+    const startTime = performance.now();
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().refresh,
       {},
       { withCredentials: true }
     ).pipe(
-      tap(response => this.handleSuccessfulAuth(response)),
-      catchError(this.handleError)
+      tap(response => {
+        const duration = performance.now() - startTime;
+        this.appInsights.trackTokenRefresh(true, duration);
+        this.handleSuccessfulAuth(response);
+      }),
+      catchError(error => {
+        const duration = performance.now() - startTime;
+        this.appInsights.trackTokenRefresh(false, duration, error.message || error);
+        return this.handleError(error);
+      })
     );
   }
 
