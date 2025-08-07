@@ -37,6 +37,7 @@ jobs:
         context: .
         file: ./nginx/Dockerfile
         push: true
+        nocache: true
         tags: ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:${{ github.sha }},
               ${{ env.REGISTRY_NAME }}.azurecr.io/bladder-tracker/nginx:latest
               
