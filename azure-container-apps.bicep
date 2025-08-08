@@ -30,6 +30,10 @@ param sqlAdminPassword string
 @description('Azure Container Registry admin password')
 param acrPassword string
 
+@secure()
+@description('JWT secret key for token signing')
+param jwtSecretKey string
+
 @description('Container image tag (usually git SHA)')
 param imageTag string
 
@@ -165,6 +169,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
           name: 'applicationinsights-connection-string'
           value: applicationInsights.properties.ConnectionString
         }
+        {
+          name: 'jwt-secret-key'
+          value: jwtSecretKey
+        }
       ]
     }
     template: {
@@ -218,6 +226,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
             {
               name: 'AllowedCorsOrigins__0'
               value: 'https://bladder-tracker.delightfulsmoke-a94ff916.westus.azurecontainerapps.io'
+            }
+            {
+              name: 'JwtSettings__SecretKey'
+              secretRef: 'jwt-secret-key'
             }
           ]
         }

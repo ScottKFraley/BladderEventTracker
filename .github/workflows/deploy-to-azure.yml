@@ -171,4 +171,5 @@ jobs:
           --parameters sqlAdminPassword='${{ secrets.DB_PASSWORD }}' \
           containerRegistryName=${{ env.REGISTRY_NAME }} \
           acrPassword='${{ secrets.ACR_PASSWORD }}' \
+          jwtSecretKey='${{ secrets.JWT_SECRET_KEY }}' \
           imageTag=${{ github.sha }}
