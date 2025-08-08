@@ -28,7 +28,7 @@ public class TrackerEndpointsTests
     }
 
     // Tests for HandleGetLogRecords
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleGetLogRecords_ReturnsOkResult_WhenServiceSucceeds()
     {
         // Arrange
@@ -51,7 +51,7 @@ public class TrackerEndpointsTests
     }
 
     // Tests for HandleGetLastNDaysLogRecords
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleGetLastNDaysLogRecords_ReturnsBadRequest_WhenUserIdEmpty()
     {
         // Arrange
@@ -70,7 +70,7 @@ public class TrackerEndpointsTests
         Assert.Equal("User ID is required", badRequestResult.Value);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleGetLastNDaysLogRecords_ReturnsOkWithEmptyList_WhenNoRecordsFound()
     {
         // Arrange
@@ -94,7 +94,7 @@ public class TrackerEndpointsTests
     }
 
     // Tests for HandleCreateLogRecord
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleCreateLogRecord_ReturnsCreatedResult_WhenSuccessful()
     {
         // Arrange
@@ -117,7 +117,7 @@ public class TrackerEndpointsTests
         Assert.Equal(createdItem, createdResult.Value);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleCreateLogRecord_ReturnsBadRequest_WhenValidationFails()
     {
         // Arrange
@@ -139,7 +139,7 @@ public class TrackerEndpointsTests
         Assert.Equal(expectedMessage, badRequestResult.Value);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task HandleCreateLogRecord_ReturnsNotFound_WhenUserNotFound()
     {
         // Arrange

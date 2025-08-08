@@ -23,7 +23,7 @@ public class AppDbContextUnitTests : IDisposable
         _mockDbCtxLogger = new Mock<ILogger<AppDbContext>>();
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void CreateDbContext_ShouldCreateValidContext()
     {
         // Arrange
@@ -39,7 +39,7 @@ public class AppDbContextUnitTests : IDisposable
         Assert.IsType<AppDbContext>(context);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void CreateDbContext_ShouldHaveValidInMemoryProvider()
     {
         // Arrange
@@ -54,7 +54,7 @@ public class AppDbContextUnitTests : IDisposable
         Assert.Equal("Microsoft.EntityFrameworkCore.InMemory", context.Database.ProviderName);
         Assert.True(context.Database.IsInMemory());
     }
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void CreateDbContext_ShouldHaveCorrectDbSets()
     {
         // Arrange
@@ -71,7 +71,7 @@ public class AppDbContextUnitTests : IDisposable
         Assert.NotNull(context.RefreshTokens);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void CreateDbContext_ShouldAllowDatabaseOperations()
     {
         // Arrange

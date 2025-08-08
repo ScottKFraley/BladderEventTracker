@@ -11,7 +11,7 @@ public class AppDbContextIntegrationTests : IClassFixture<DatabaseFixture>
         _fixture = fixture;
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Integration")]
     public async Task CanConnectToDatabase()
     {
         // Act & Assert
@@ -19,7 +19,7 @@ public class AppDbContextIntegrationTests : IClassFixture<DatabaseFixture>
         Assert.True(canConnect);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Integration")]
     public void DatabaseHasExpectedTables()
     {
         // Act / Assert
@@ -28,7 +28,7 @@ public class AppDbContextIntegrationTests : IClassFixture<DatabaseFixture>
         Assert.NotNull(_fixture.Context.Model.FindEntityType(typeof(TrackingLogItem)));
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Integration")]
     public async Task CanQueryTables()
     {
         // Verify we can query the tables

@@ -53,23 +53,13 @@ jobs:
       working-directory: ./backend
       run: dotnet build --configuration Release --no-restore
       
-    - name: Run .NET Unit Tests
+    - name: Run .NET Unit Tests Only (for deployment)
       working-directory: ./backend
       run: |
-        dotnet test trackerApi.UnitTests/trackerApi.UnitTests.csproj \
-          --configuration Release \
+        dotnet test --configuration Release \
           --no-build \
           --verbosity normal \
-          --collect:"XPlat Code Coverage" \
-          --logger:"console;verbosity=detailed"
-          
-    - name: Run .NET Integration Tests
-      working-directory: ./backend
-      run: |
-        dotnet test trackerApi.IntegrationTests/trackerApi.IntegrationTests.csproj \
-          --configuration Release \
-          --no-build \
-          --verbosity normal \
+          --filter "Category=Unit" \
           --collect:"XPlat Code Coverage" \
           --logger:"console;verbosity=detailed"
           
@@ -87,14 +77,55 @@ jobs:
       uses: actions/upload-artifact@v4  
       if: always()
       with:
-        name: dotnet-test-results
+        name: dotnet-unit-test-results
+        path: |
+          ./backend/**/TestResults/
+          ./backend/**/coverage/
+        retention-days: 7
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    # Note: no "needs: test" - runs independently, doesn't block deployment
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore .NET dependencies
+      working-directory: ./backend
+      run: dotnet restore
+      
+    - name: Build .NET solution
+      working-directory: ./backend
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Run Integration Tests
+      working-directory: ./backend
+      run: |
+        dotnet test --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --filter "Category=Integration" \
+          --collect:"XPlat Code Coverage" \
+          --logger:"console;verbosity=detailed"
+          
+    - name: Upload Integration test results
+      uses: actions/upload-artifact@v4  
+      if: always()
+      with:
+        name: dotnet-integration-test-results
         path: |
           ./backend/**/TestResults/
           ./backend/**/coverage/
         retention-days: 7
 
   build-and-deploy:
-    needs: test
+    needs: test  # Only depends on unit tests, not integration tests
     runs-on: ubuntu-latest
     
     steps:

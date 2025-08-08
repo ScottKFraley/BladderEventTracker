@@ -22,7 +22,7 @@ namespace trackerApi.UnitTests;
 [ExcludeFromCodeCoverage]
 public class AuthenticationEndpointsTests
 {
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task Login_WithInvalidUsername_ReturnsUnauthorized()
     {
         // Arrange
@@ -44,7 +44,7 @@ public class AuthenticationEndpointsTests
         Assert.IsType<UnauthorizedHttpResult>(result);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task Login_WithValidCredentials_ReturnsOkWithToken()
     {
         // Arrange
@@ -89,7 +89,7 @@ public class AuthenticationEndpointsTests
     }
 
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithValidUsername_ReturnsOkWithToken()
     {
         // Arrange
@@ -115,7 +115,7 @@ public class AuthenticationEndpointsTests
     }
 
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithNoUsername_ReturnsUnauthorized()
     {
         // Arrange

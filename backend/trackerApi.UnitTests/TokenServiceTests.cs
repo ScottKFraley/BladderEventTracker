@@ -72,7 +72,7 @@ public class TokenServiceTests : IDisposable
             .ReturnsAsync(_testUser);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithUser_ReturnsValidLoginToken()
     {
         // Act
@@ -98,7 +98,7 @@ public class TokenServiceTests : IDisposable
         Assert.True(jwtToken.ValidTo > DateTime.UtcNow);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithUsername_ReturnsValidRefreshToken()
     {
         // Act
@@ -129,7 +129,7 @@ public class TokenServiceTests : IDisposable
         _mockUserService.Verify(s => s.GetUserByUsername("testuser"), Times.Once);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithNoUserOrUsername_ThrowsArgumentException()
     {
         // Act & Assert
@@ -139,7 +139,7 @@ public class TokenServiceTests : IDisposable
         Assert.Equal("Either user or username must be provided", exception.Message);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_ValidatesExpiration()
     {
         // Arrange
@@ -167,7 +167,7 @@ public class TokenServiceTests : IDisposable
         Assert.True(Math.Abs((expectedExpiration - jwtToken.ValidTo).TotalMinutes) < 1);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithInvalidConfiguration_ThrowsException()
     {
         // Arrange
@@ -184,7 +184,7 @@ public class TokenServiceTests : IDisposable
         Assert.Equal("JwtSettings:SecretKey not found in appsettings.json", exception.Message);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public async Task GenerateToken_WithNonexistentUsername_ThrowsArgumentException()
     {
         // Arrange

@@ -11,7 +11,7 @@ namespace trackerApi.UnitTests;
 public class WarmUpEndpointsTests
 {
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void HandleWarmUp_ReturnsNoContent_WhenSuccessful()
     {
         // Act
@@ -21,7 +21,7 @@ public class WarmUpEndpointsTests
         Assert.IsType<NoContent>(result);
     }
 
-    [Fact]
+    [Fact, Trait("Category", "Unit")]
     public void HandleWarmUp_RespondsQuickly_UnderNormalConditions()
     {
         // Arrange
