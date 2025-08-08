@@ -1,0 +1,148 @@
+# .claudecode - Enhanced Configuration for BladderTracker Project
+
+## Project Context
+**Project Name**: BladderTracker  
+**Root Directory**: `C:\dev\apps\BladderTracker\appProject`
+
+### Technology Stack
+- **Frontend**: Angular v17 (standalone components architecture)
+- **Styling**: SASS (required - no other CSS preprocessors)
+- **Backend**: ASP.NET Web API (.NET 9) with Minimal APIs
+- **Database**: SQL Server Developer Edition v13
+- **ORM**: Entity Framework Core 9.0.4
+- **Authentication**: JWT Bearer Tokens
+- **State Management**: NgRx + RxJS
+- **Testing**: xUnit (backend), Angular Testing (frontend)
+- **Containers**: Docker Compose v2 syntax (`docker compose` without hyphen)
+- **Cloud**: Azure
+- **Development Environment**: Windows with WSL2 Ubuntu v24, Visual Studio Community + VS Code
+
+## Project Structure
+```
+C:\dev\apps\BladderTracker\appProject/
+├── frontend/          # Angular v17 application
+├── backend/           # .NET 9 Web API
+├── docker-compose.yml # Container orchestration
+├── .github/actions/   # CI/CD pipeline
+└── infrastructure/    # Bicep templates
+```
+
+## Testing Requirements
+### Frontend Tests
+- **Command**: `ng test ...` (run from `frontend` folder)
+- **Required**: Must pass before deployment
+- **Coverage**: Aim for 80%+ coverage
+
+### Backend Tests  
+- **Command**: `dotnet test` (run from `backend` folder)
+- **Required**: Must pass before deployment
+- **Coverage**: Aim for 75%+ coverage
+
+### CI/CD Integration
+- **Blocker Issue**: Need to update `.bicep` and/or GitHub Actions to run all unit tests before deployment
+- **Priority**: High - deployment gates must be implemented
+
+## Code Generation Guidelines
+
+### File Creation Rules
+- **Warning Threshold**: 20+ lines of code
+- **Whole File Creation**: Always explain what will be created and ask for confirmation
+- **Command Format**: Use `code <file_name>` at the top of new files
+
+### Code Modification Style
+- **Small Fixes**: Show only changed lines with 1-2 lines of context
+- **Changed Line Markers**: Add `// CHANGED` comments on modified lines
+- **Avoid Repetition**: Reference "above changes" instead of re-emitting commands
+
+### Git Commit Messages
+- **Format**: Always provide as complete command: `git commit -m "your message"`
+- **Style**: Clear, concise, imperative mood
+
+## Technology-Specific Constraints
+
+### Angular v17 Requirements
+- **Architecture**: Standalone components only (no NgModules)
+- **Imports**: Use standalone component imports
+- **Routing**: Standalone routing configuration
+- **Services**: Injectable services with `providedIn: 'root'`
+
+### .NET 9 Minimal APIs
+- **Style**: Use Minimal API patterns, not controller-based
+- **Dependency Injection**: Built-in DI container
+- **Validation**: FluentValidation or built-in validation
+- **Error Handling**: Global exception handling middleware
+
+### Docker Compose v2
+- **Syntax**: Always use `docker compose` (space, no hyphen)
+- **Version**: Use Compose file format version 3.8+
+- **Services**: Separate services for frontend, backend, database
+
+### Entity Framework Core 9.0.4
+- **Migrations**: Code-first approach
+- **Configuration**: Fluent API in separate configuration classes
+- **Connection**: Connection string management via configuration
+
+## Communication Preferences
+
+### Code Emission Strategy
+- **Preference**: Create Claude Code prompts instead of emitting code directly
+- **Exception**: Small fixes (under 20 lines) can be shown directly
+- **Explanation**: Always explain the approach before generating prompts
+
+### Response Optimization
+- **Avoid Repetition**: Reference previous responses instead of re-explaining
+- **Context Awareness**: Remember recent conversations and build upon them
+- **Efficiency**: Prioritize actionable guidance over verbose explanations
+
+### Warning System
+- **Large Changes**: Warn before creating substantial code
+- **Architectural Impact**: Flag changes that affect system design
+- **Breaking Changes**: Highlight potential compatibility issues
+
+## Deployment Pipeline Requirements
+
+### Pre-Deployment Gates
+1. **Frontend Tests**: All Angular tests must pass
+2. **Backend Tests**: All .NET tests must pass  
+3. **Build Validation**: Both projects must build successfully
+4. **Infrastructure**: Bicep templates must validate
+
+### Azure Deployment
+- **Infrastructure as Code**: Use Bicep templates
+- **Environment Management**: Dev/Test/Prod separation
+- **Security**: Managed identities, Key Vault integration
+- **Monitoring**: Application Insights integration
+
+## Development Workflow
+
+### Local Development
+- **Containers**: Use Docker Compose for local database
+- **Hot Reload**: Angular dev server + .NET hot reload
+- **Debugging**: VS Code for frontend, Visual Studio for backend
+
+### Version Control
+- **Branching**: Feature branches with PR reviews
+- **Commit Style**: Conventional commits preferred
+- **CI Triggers**: Tests run on PR creation and merge
+
+## Error Handling Patterns
+
+### Frontend (Angular)
+- **HTTP Errors**: Centralized error interceptor
+- **User Feedback**: Toast notifications for user errors
+- **Logging**: Console logging in dev, structured logging in prod
+
+### Backend (.NET)
+- **Global Handler**: Middleware for unhandled exceptions
+- **Validation**: Return structured validation errors
+- **Logging**: Structured logging with Serilog or built-in logging
+
+## Security Considerations
+- **JWT Tokens**: Secure storage and refresh patterns
+- **CORS**: Proper CORS configuration for Angular frontend
+- **Validation**: Input validation on both client and server
+- **SQL Injection**: Use parameterized queries via EF Core
+
+---
+
+**Note**: This configuration prioritizes Angular v17 standalone architecture and .NET 9 Minimal APIs. Always verify package compatibility with these specific versions before suggesting dependencies.

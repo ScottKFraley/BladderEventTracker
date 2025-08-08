@@ -149,11 +149,11 @@ try
         .AddJwtBearer(options =>
         {
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-            
+
             // Log JWT configuration for debugging
             Log.Information("JWT Configuration - Issuer: {Issuer}, Audience: {Audience}, SecretKey Length: {SecretKeyLength}",
                 jwtSettings["Issuer"], jwtSettings["Audience"], jwtSettings["SecretKey"]?.Length ?? 0);
-            
+
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -172,22 +172,22 @@ try
                 OnTokenValidated = context =>
                 {
                     var claimsInfo = string.Join(", ", context.Principal?.Claims?.Select(c => $"{c.Type}={c.Value}") ?? Enumerable.Empty<string>());
-                    Log.Information("JWT Token validated successfully. User: {User}, Claims: {Claims}", 
+                    Log.Information("JWT Token validated successfully. User: {User}, Claims: {Claims}",
                         context?.Principal?.Identity?.Name, claimsInfo);
 
                     return Task.CompletedTask;
                 },
                 OnAuthenticationFailed = context =>
                 {
-                    Log.Error("JWT Authentication failed: {Exception}. Token: {Token}", 
-                        context.Exception.Message, 
+                    Log.Error("JWT Authentication failed: {Exception}. Token: {Token}",
+                        context.Exception.Message,
                         context.Request.Headers.Authorization.ToString().Substring(0, Math.Min(50, context.Request.Headers.Authorization.ToString().Length)) + "...");
 
                     return Task.CompletedTask;
                 },
                 OnChallenge = context =>
                 {
-                    Log.Warning("JWT Challenge triggered. Error: {Error}, ErrorDescription: {ErrorDescription}", 
+                    Log.Warning("JWT Challenge triggered. Error: {Error}, ErrorDescription: {ErrorDescription}",
                         context.Error, context.ErrorDescription);
 
                     return Task.CompletedTask;
@@ -237,14 +237,28 @@ try
     }
 
     // Register DbContext with SQL Server
-    builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+    builder.Services.AddDbContextPool<AppDbContext>((serviceProvider, options) =>
     {
-        options.UseSqlServer(connectionString);
+        options.UseSqlServer(connectionString, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: [258, 2, 53, 121, 232, 20]);
+        });
+
         // Enable sensitive data logging for development environments only
         if (builder.Environment.IsDevelopment() || builder.Environment.EnvironmentName == "DevVS")
         {
             options.EnableSensitiveDataLogging();
         }
+        else
+        {
+            options.EnableSensitiveDataLogging(false);
+            options.EnableDetailedErrors(false);
+        }
+
+        options.EnableServiceProviderCaching();
     });
 
     //
@@ -328,23 +342,23 @@ try
     app.UseCors(app.Environment.IsDevelopment() ? "DevelopmentPolicy" : "ProductionPolicy");
 
     app.UseHttpsRedirection();
-    
+
     // Add custom middleware to log Authorization headers
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path.Value;
         var method = context.Request.Method;
-        
+
         // Only log for non-warmup endpoints to avoid noise
         if (!path?.Contains("/warmup") == true)
         {
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
             if (!string.IsNullOrEmpty(authHeader))
             {
-                var tokenPreview = authHeader.StartsWith("Bearer ") 
+                var tokenPreview = authHeader.StartsWith("Bearer ")
                     ? "Bearer " + (authHeader.Length > 27 ? authHeader.Substring(7, 20) + "..." : authHeader.Substring(7))
                     : authHeader.Substring(0, Math.Min(20, authHeader.Length)) + "...";
-                Log.Information("Request {Method} {Path} - Authorization header: {AuthHeader}", 
+                Log.Information("Request {Method} {Path} - Authorization header: {AuthHeader}",
                     method, path, tokenPreview);
             }
             else
@@ -352,10 +366,10 @@ try
                 Log.Information("Request {Method} {Path} - No Authorization header", method, path);
             }
         }
-        
+
         await next();
     });
-    
+
     app.UseAuthentication();
     app.UseAuthorization();
 

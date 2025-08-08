@@ -242,7 +242,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: [258, 2, 53, 121, 232, 20]);
+        });
 
         // Create a default logger if _logger is null
         var logger = _logger ?? new LoggerFactory().CreateLogger<AppDbContext>();
