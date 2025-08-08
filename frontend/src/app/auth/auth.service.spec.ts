@@ -7,7 +7,8 @@ import { Router } from '@angular/router';
 import { Component } from '@angular/core';
 import { TOKEN_REFRESH_THRESHOLD } from './auth.config';
 import { ApiEndpointsService } from '../services/api-endpoints.service';
-
+import { ApplicationInsightsService } from '../services/application-insights.service';
+import { MockApplicationInsightsService } from '../services/application-insights.service.mock';
 
 @Component({
     selector: 'app-mock-dashboard',
@@ -53,7 +54,8 @@ describe('AuthService', () => {
             providers: [
                 AuthService,
                 { provide: TOKEN_REFRESH_THRESHOLD, useValue: 1000 },
-                { provide: ApiEndpointsService, useValue: mockApiEndpoints }
+                { provide: ApiEndpointsService, useValue: mockApiEndpoints },
+                { provide: ApplicationInsightsService, useClass: MockApplicationInsightsService }
             ]
         });
 
@@ -249,7 +251,7 @@ describe('AuthService', () => {
     xdescribe('startup authentication checks', () => {
         it('should attempt refresh token login when no valid token exists', () => {
             localStorage.clear();
-            
+
             // Create a new service instance to trigger checkAuthStatus
             const newService = new (service.constructor as any)(
                 TestBed.inject(HttpClient),
@@ -262,17 +264,17 @@ describe('AuthService', () => {
             const req = httpMock.expectOne('/api/v1/auth/refresh');
             expect(req.request.method).toBe('POST');
             expect(req.request.withCredentials).toBe(true);
-            
+
             // Simulate failed refresh (no valid refresh token)
             req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-            
+
             newService.stopRefreshTimer();
         });
 
         it('should successfully authenticate on startup with valid refresh token', () => {
             localStorage.clear();
             const mockResponse: AuthResponse = { token: 'startup-token' };
-            
+
             // Create a new service instance to trigger checkAuthStatus
             const newService = new (service.constructor as any)(
                 TestBed.inject(HttpClient),
@@ -284,9 +286,9 @@ describe('AuthService', () => {
             // Should attempt refresh token call
             const req = httpMock.expectOne('/api/v1/auth/refresh');
             req.flush(mockResponse);
-            
+
             expect(localStorage.getItem('auth_token')).toBe('startup-token');
-            
+
             newService.stopRefreshTimer();
         });
     });
@@ -304,7 +306,9 @@ describe('AuthService', () => {
     });
 
     afterEach(() => {
-        service.stopRefreshTimer();
+        if (service && typeof service.stopRefreshTimer === 'function') {
+            service.stopRefreshTimer();
+        }
         localStorage.clear();
         // Handle any remaining requests before verify
         const pendingRequests = httpMock.match(() => true);

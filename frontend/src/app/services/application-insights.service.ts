@@ -12,10 +12,10 @@ export class ApplicationInsightsService {
 
   constructor(private router: Router) {
     const angularPlugin = new AngularPlugin();
-    
+
     // Get connection string from environment or runtime configuration
     const connectionString = this.getApplicationInsightsConnectionString();
-    
+
     this.appInsights = new ApplicationInsights({
       config: {
         connectionString: connectionString,
@@ -37,14 +37,14 @@ export class ApplicationInsightsService {
     });
 
     this.appInsights.loadAppInsights();
-    
+
     // Set user context
     this.appInsights.setAuthenticatedUserContext('anonymous', 'anonymous', true);
   }
 
   // Track custom events
   trackEvent(name: string, properties?: { [key: string]: any }, measurements?: { [key: string]: number }): void {
-    this.appInsights.trackEvent({ 
+    this.appInsights.trackEvent({
       name,
       properties,
       measurements
@@ -89,9 +89,9 @@ export class ApplicationInsightsService {
       userAgent: navigator.userAgent,
       ...(errorMessage && { errorMessage })
     };
-    
+
     const measurements = duration ? { duration } : undefined;
-    
+
     this.trackEvent('UserLogin', properties, measurements);
   }
 
@@ -108,9 +108,9 @@ export class ApplicationInsightsService {
       userAgent: navigator.userAgent,
       ...(errorMessage && { errorMessage })
     };
-    
+
     const measurements = duration ? { duration } : undefined;
-    
+
     this.trackEvent('TokenRefresh', properties, measurements);
   }
 
@@ -132,7 +132,7 @@ export class ApplicationInsightsService {
       ...(statusCode && { statusCode: statusCode.toString() }),
       ...(errorMessage && { errorMessage })
     };
-    
+
     this.trackEvent('APICall', properties, { duration });
   }
 
@@ -143,7 +143,7 @@ export class ApplicationInsightsService {
       success: success.toString(),
       ...(validationErrors && { validationErrors: validationErrors.join(', ') })
     };
-    
+
     this.trackEvent('FormSubmission', properties);
   }
 
@@ -174,19 +174,24 @@ export class ApplicationInsightsService {
 
   // Get Application Insights connection string from environment or runtime configuration
   private getApplicationInsightsConnectionString(): string {
-    // Try to get from runtime configuration first (e.g., from window object set by server)
+    // Check if disabled in environment (for tests)
+    if ((environment as any)?.applicationInsights?.disabled) {
+      return '';
+    }
+
+    // Try to get from runtime configuration first
     const runtimeConfig = (window as any)?.appConfig?.applicationInsights?.connectionString;
     if (runtimeConfig) {
       return runtimeConfig;
     }
-    
-    // Try to get from environment variables (if set during build)
+
+    // Try to get from environment variables
     const envConfig = (environment as any)?.applicationInsights?.connectionString;
     if (envConfig) {
       return envConfig;
     }
-    
-    // Return empty string as fallback (Application Insights will handle gracefully)
+
+    // Return empty string as fallback
     return '';
   }
 }

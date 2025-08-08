@@ -57,7 +57,7 @@ export class AuthService {
 
   login(credentials: LoginDto): Observable<AuthResponse> {
     const startTime = performance.now();
-    
+
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().login,
       credentials,
@@ -82,7 +82,7 @@ export class AuthService {
     if (currentUser) {
       this.appInsights.trackLogout(currentUser);
     }
-    
+
     this.appInsights.clearAuthenticatedUser();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
@@ -101,7 +101,7 @@ export class AuthService {
 
   refreshToken(): Observable<any> {
     const startTime = performance.now();
-    
+
     return this.http.post<AuthResponse>(
       this.apiEndpoints.getAuthEndpoints().refresh,
       {},
@@ -184,7 +184,7 @@ export class AuthService {
         this.logout();
       }
     });
-    
+
     this.subscriptions.add(subscription);
   }
 
@@ -260,8 +260,10 @@ export class AuthService {
     if (!token) return null;
 
     const decodedToken = this.decodeToken(token);
-    console.log('All available claims:', Object.keys(decodedToken)); // Add this line
-    console.log('Full decoded token:', decodedToken); // Add this line too
+    if (!decodedToken) return null;
+
+    console.log('All available claims:', Object.keys(decodedToken));
+    console.log('Full decoded token:', decodedToken);
 
     // Check for both possible claim formats
     return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
