@@ -19,11 +19,4 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build-env /app/out .
 
-# Expose the port
-EXPOSE 5000
-
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:5000
-ENV ASPNETCORE_ENVIRONMENT=Production
-
 ENTRYPOINT ["dotnet", "trackerApi.dll"]
