@@ -212,16 +212,12 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
               secretRef: 'sql-connection-string'
             }
             {
-              name: 'ConnectionStrings__ApplicationInsights'
-              secretRef: 'applicationinsights-connection-string'
-            }
-            {
-              name: 'SQL_PASSWORD'
-              secretRef: 'sql-password'
-            }
-            {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               secretRef: 'applicationinsights-connection-string'
+            }
+            {
+              name: 'AllowedCorsOrigins__0'
+              value: 'https://bladder-tracker.delightfulsmoke-a94ff916.westus.azurecontainerapps.io'
             }
           ]
         }
