@@ -225,9 +225,16 @@ try
     }
 
     // Get the connection string for SQL Server
+    var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    Log.Information("Raw connection string from config: {ConnectionString}", 
+        string.IsNullOrEmpty(rawConnectionString) ? "[EMPTY]" : "[HAS VALUE]");
+    
     var connectionString = ConnectionStringHelper.ProcessConnectionString(
-        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        rawConnectionString!,
         builder.Configuration);
+    
+    Log.Information("Processed connection string: {ConnectionString}", 
+        string.IsNullOrEmpty(connectionString) ? "[EMPTY]" : "[HAS VALUE]");
 
     if (string.IsNullOrEmpty(connectionString))
     {
