@@ -37,28 +37,35 @@ try
         Log.Information("Configuration provider: {ProviderType}", provider.GetType().Name);
     }
 
+    //// Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
+    //var isRunningInContainer = bool.TryParse(
+    //    Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+    //    out bool inContainer) && inContainer;
+
+    //// Determine environment based on container status and debugger
+    //if (isRunningInContainer)
+    //{
+    //    // Running in Docker container - use Development config (with Docker connection string)
+    //    builder.Environment.EnvironmentName = "Development";
+    //    Log.Information("Running in Docker container - setting environment to: {Environment}",
+    //        builder.Environment.EnvironmentName);
+    //}
+    //else
+    //{
+    //    // Running locally (in debugger or directly) - use DevVS config
+    //    builder.Environment.EnvironmentName = "DevVS";
+    //    Log.Information("Running locally - setting environment to: {Environment}",
+    //        builder.Environment.EnvironmentName);
+    //}
+
     // Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
     var isRunningInContainer = bool.TryParse(
         Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
         out bool inContainer) && inContainer;
 
-    // Determine environment based on container status and debugger
-    if (isRunningInContainer)
-    {
-        // Running in Docker container - use Development config (with Docker connection string)
-        builder.Environment.EnvironmentName = "Development";
-        Log.Information("Running in Docker container - setting environment to: {Environment}",
-            builder.Environment.EnvironmentName);
-    }
-    else
-    {
-        // Running locally (in debugger or directly) - use DevVS config
-        builder.Environment.EnvironmentName = "DevVS";
-        Log.Information("Running locally - setting environment to: {Environment}",
-            builder.Environment.EnvironmentName);
-    }
-
-    Log.Information("Current environment: {Environment}", builder.Environment.EnvironmentName);
+    // Log the environment (but don't override it)
+    Log.Information("Running in container: {IsContainer}, Current environment: {Environment}",
+        isRunningInContainer, builder.Environment.EnvironmentName);
 
     builder.WebHost.ConfigureKestrel(serverOptions =>
     {
@@ -226,14 +233,14 @@ try
 
     // Get the connection string for SQL Server
     var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    Log.Information("Raw connection string from config: {ConnectionString}", 
+    Log.Information("Raw connection string from config: {ConnectionString}",
         string.IsNullOrEmpty(rawConnectionString) ? "[EMPTY]" : "[HAS VALUE]");
-    
+
     var connectionString = ConnectionStringHelper.ProcessConnectionString(
         rawConnectionString ?? string.Empty,
         builder.Configuration);
-    
-    Log.Information("Processed connection string: {ConnectionString}", 
+
+    Log.Information("Processed connection string: {ConnectionString}",
         string.IsNullOrEmpty(connectionString) ? "[EMPTY]" : "[HAS VALUE]");
 
     if (string.IsNullOrEmpty(connectionString))
