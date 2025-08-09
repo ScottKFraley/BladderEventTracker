@@ -316,20 +316,16 @@ try
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try
         {
-            Log.Information("Attempting to connect to database...");
-            Log.Information("Connection string server: {Server}", context.Database.GetConnectionString()?.Split(';').FirstOrDefault(s => s.StartsWith("Server=")));
+            var fullConnectionString = context.Database.GetConnectionString();
+            Log.Information("Full connection string: {ConnectionString}", fullConnectionString);
+            Log.Information("Connection string length: {Length}", fullConnectionString?.Length ?? 0);
             
-            await context.Database.CanConnectAsync();
-            Log.Information("Database connection successful");
-
-            Log.Information("Running database migrations...");
-            await context.Database.MigrateAsync();
-            Log.Information("Database migrations completed");
+            // Skip migration for now to debug connection string
+            Log.Information("Skipping database operations for debugging");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Database operation failed. Connection string format: {ConnectionStringFormat}", 
-                context.Database.GetConnectionString()?.Split(';').Take(3).Select(s => s.Split('=')[0]).ToArray());
+            Log.Error(ex, "Error getting connection string: {Error}", ex.Message);
             throw;
         }
     }
