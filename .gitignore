@@ -6,6 +6,11 @@
 /out-tsc
 /bazel-out
 
+# Code coverage reports
+**/coverage/
+frontend/coverage/
+backend/coverage/
+
 # no data files - more specific ignores
 database/backup.sql
 database/backups/**/*.sql

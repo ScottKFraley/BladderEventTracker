@@ -111,10 +111,15 @@ export class MobileDebugService {
       cache: 'no-cache'
     })
     .then(response => {
+      const headers: any = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      
       console.log('Connection test result:', {
         status: response.status,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        headers: headers
       });
     })
     .catch(error => {
