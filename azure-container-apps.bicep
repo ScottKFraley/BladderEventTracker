@@ -155,7 +155,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       secrets: [
         {
             name: 'sql-connection-string'
-            value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=BETrackingDb;UserID=sqladmin;Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;ConnectionTimeout=60;CommandTimeout=120;ConnectRetryCount=3;ConnectRetryInterval=10;MultipleActiveResultSets=false;'
+            value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=BETrackingDb;User ID=sqladmin;Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=60;Command Timeout=120;ConnectRetryCount=3;ConnectRetryInterval=10;MultipleActiveResultSets=false;'
         }
         {
           name: 'sql-password'

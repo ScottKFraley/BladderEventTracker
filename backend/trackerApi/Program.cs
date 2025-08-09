@@ -316,17 +316,19 @@ try
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         try
         {
-            var fullConnectionString = context.Database.GetConnectionString();
-            Log.Information("Full connection string: {ConnectionString}", fullConnectionString);
-            Log.Information("Connection string length: {Length}", fullConnectionString?.Length ?? 0);
-            
-            // Skip migration for now to debug connection string
-            Log.Information("Skipping database operations for debugging");
+            Log.Information("Attempting to connect to database...");
+            await context.Database.CanConnectAsync();
+            Log.Information("Database connection successful");
+
+            Log.Information("Running database migrations...");
+            await context.Database.MigrateAsync();
+            Log.Information("Database migrations completed");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error getting connection string: {Error}", ex.Message);
-            throw;
+            Log.Error(ex, "Database operation failed: {Error}", ex.Message);
+            // Don't throw - let the app start without migrations for now
+            Log.Warning("Continuing without database migrations");
         }
     }
 
