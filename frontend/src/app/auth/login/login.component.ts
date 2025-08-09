@@ -58,9 +58,16 @@ export class LoginComponent {
 
       this.authService.login(this.loginForm.value).subscribe({
         next: () => {
+          console.log('Login successful, navigating to dashboard');
           this.router.navigate(['/dashboard']); // or your desired route
         },
         error: (error: string) => {
+          console.error('Login error in component:', {
+            error: error,
+            formValue: this.loginForm.value.username, // Don't log password
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          });
           this.errorMessage = error;
           this.isLoading = false;
         },

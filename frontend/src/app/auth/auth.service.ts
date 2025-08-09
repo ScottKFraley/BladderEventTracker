@@ -273,16 +273,44 @@ export class AuthService {
   }
 
   private handleError(error: HttpErrorResponse) {
+    console.error('Auth Service Error Details:', {
+      status: error.status,
+      statusText: error.statusText,
+      message: error.message,
+      url: error.url,
+      error: error.error,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
+    });
+
     let errorMessage = 'An error occurred';
     if (error.error instanceof ErrorEvent) {
       // Client-side error
-      errorMessage = error.error.message;
+      errorMessage = `Network error: ${error.error.message}`;
+      console.error('Client-side error:', error.error);
     } else {
-      // Server-side error
-      errorMessage = error.status === 401
-        ? 'Invalid credentials'
-        : 'Server error, please try again later';
+      // Server-side error - provide detailed information
+      console.error('Server response error:', error.error);
+      
+      if (error.status === 401) {
+        errorMessage = 'Invalid credentials';
+      } else if (error.status === 0) {
+        errorMessage = `Network connection failed (Status: ${error.status}). Check internet connection.`;
+      } else if (error.status >= 500) {
+        errorMessage = `Server error (${error.status}): ${error.statusText || 'Internal server error'}`;
+      } else if (error.status >= 400) {
+        errorMessage = `Client error (${error.status}): ${error.statusText || 'Bad request'}`;
+      } else {
+        errorMessage = `Unexpected error (${error.status}): ${error.statusText || 'Unknown error'}`;
+      }
+      
+      // Add error details for mobile debugging
+      if (error.error?.message) {
+        errorMessage += ` - Details: ${error.error.message}`;
+      }
     }
+    
+    console.error('Final error message:', errorMessage);
     return throwError(() => errorMessage);
   }
 }

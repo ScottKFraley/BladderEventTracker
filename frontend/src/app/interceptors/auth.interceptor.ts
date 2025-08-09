@@ -1,4 +1,4 @@
-import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
@@ -23,13 +23,33 @@ export const authInterceptor: HttpInterceptorFn = (
   }
 
   return next(req).pipe(
-    tap(() => {
+    tap((response) => {
+      // Log successful requests for debugging
+      console.log('HTTP Success:', {
+        method: req.method,
+        url: req.url,
+        status: response instanceof HttpResponse ? response.status : 'unknown',
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+      
       // Reset refresh count on successful requests (except auth endpoints)
       if (!isAuthEndpoint(req.url) && refreshCount > 0) {
         refreshCount = 0;
       }
     }),
     catchError((error: HttpErrorResponse) => {
+      console.error('HTTP Interceptor Error:', {
+        method: req.method,
+        url: req.url,
+        status: error.status,
+        statusText: error.statusText,
+        message: error.message,
+        error: error.error,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+      
       if (error.status === 401 && !isAuthEndpoint(req.url)) {
         return handle401Error(req, next, authService, router);
       }
