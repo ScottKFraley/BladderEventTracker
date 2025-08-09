@@ -8,7 +8,7 @@ public static class ConnectionStringHelper
         if (string.IsNullOrEmpty(connectionString))
         {
             // Try to get from environment variable (set by Container Apps)
-            connectionString = configuration.GetConnectionString("DefaultConnection");
+            connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
             
             if (string.IsNullOrEmpty(connectionString))
             {

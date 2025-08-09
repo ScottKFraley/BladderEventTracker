@@ -230,7 +230,7 @@ try
         string.IsNullOrEmpty(rawConnectionString) ? "[EMPTY]" : "[HAS VALUE]");
     
     var connectionString = ConnectionStringHelper.ProcessConnectionString(
-        rawConnectionString!,
+        rawConnectionString ?? string.Empty,
         builder.Configuration);
     
     Log.Information("Processed connection string: {ConnectionString}", 
@@ -317,17 +317,19 @@ try
         try
         {
             Log.Information("Attempting to connect to database...");
+            Log.Information("Connection string server: {Server}", context.Database.GetConnectionString()?.Split(';').FirstOrDefault(s => s.StartsWith("Server=")));
+            
             await context.Database.CanConnectAsync();
             Log.Information("Database connection successful");
 
-            // Add this:
             Log.Information("Running database migrations...");
             await context.Database.MigrateAsync();
             Log.Information("Database migrations completed");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error connecting to database");
+            Log.Error(ex, "Database operation failed. Connection string format: {ConnectionStringFormat}", 
+                context.Database.GetConnectionString()?.Split(';').Take(3).Select(s => s.Split('=')[0]).ToArray());
             throw;
         }
     }
