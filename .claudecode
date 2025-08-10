@@ -149,6 +149,22 @@ C:\dev\apps\BladderTracker\appProject/
 - **Validation**: Input validation on both client and server
 - **SQL Injection**: Use parameterized queries via EF Core
 
+## How to format a `git commit` message when asked
+{
+  "commit_message_format": {
+    "structure": "type: brief description\n\n- bullet point changes\n- using present tense verbs\n- specific and actionable\n\n🤖 Generated with Claude Code\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "types": ["feat", "fix", "refactor", "test", "docs", "style", "chore"],
+    "guidelines": [
+      "Use imperative mood (Add, Fix, Update, not Added, Fixed, Updated)",
+      "Keep first line under 72 characters",
+      "Use bullet points for multiple changes",
+      "Be specific about what changed and why",
+      "Include technical details in bullets",
+      "Always include Claude Code attribution"
+    ]
+  }
+}
+
 ---
 
 **Note**: This configuration prioritizes Angular v17 standalone architecture and .NET 9 Minimal APIs. Always verify package compatibility with these specific versions before suggesting dependencies.

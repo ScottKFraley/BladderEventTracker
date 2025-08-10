@@ -94,8 +94,17 @@ export class AuthService {
     }
 
     this.appInsights.clearAuthenticatedUser();
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
+    
+    // Mobile compatibility: Safe localStorage cleanup
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
+      }
+    } catch (error) {
+      console.error('Error clearing localStorage on mobile device:', error);
+    }
+    
     this.isAuthenticatedSubject.next(false);
     clearTimeout(this.tokenExpiryTimer);
     this.router.navigate(['/login']);
@@ -106,7 +115,18 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+    // Mobile compatibility: Add localStorage safety check
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        return localStorage.getItem(this.TOKEN_KEY);
+      } else {
+        console.warn('localStorage not available on this mobile device');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage on mobile device:', error);
+      return null;
+    }
   }
 
   refreshToken(): Observable<any> {
@@ -164,11 +184,20 @@ export class AuthService {
 
   private handleSuccessfulAuth(response: AuthResponse): void {
     if (response.token) {
-      localStorage.setItem(this.TOKEN_KEY, response.token);
+      // Mobile compatibility: Safe localStorage access
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage !== null) {
+          localStorage.setItem(this.TOKEN_KEY, response.token);
 
-      // Set token expiry (example: 1 hour from now)
-      const expiry = new Date().getTime() + (60 * 60 * 1000);
-      localStorage.setItem(this.TOKEN_EXPIRY_KEY, expiry.toString());
+          // Set token expiry (example: 1 hour from now)
+          const expiry = new Date().getTime() + (60 * 60 * 1000);
+          localStorage.setItem(this.TOKEN_EXPIRY_KEY, expiry.toString());
+        } else {
+          console.warn('localStorage not available on this mobile device - token not persisted');
+        }
+      } catch (error) {
+        console.error('Error saving token to localStorage on mobile device:', error);
+      }
 
       this.isAuthenticatedSubject.next(true);
       this.setupTokenExpiryTimer();
@@ -177,7 +206,16 @@ export class AuthService {
 
   private checkAuthStatus(): void {
     const token = this.getToken();
-    const expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
+    let expiry: string | null = null;
+    
+    // Mobile compatibility: Safe localStorage access for expiry
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
+      }
+    } catch (error) {
+      console.error('Error accessing token expiry from localStorage on mobile device:', error);
+    }
 
     if (token && expiry) {
       const expiryTime = parseInt(expiry, 10);
@@ -209,7 +247,17 @@ export class AuthService {
   }
 
   private setupTokenExpiryTimer(): void {
-    const expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
+    let expiry: string | null = null;
+    
+    // Mobile compatibility: Safe localStorage access
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage !== null) {
+        expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
+      }
+    } catch (error) {
+      console.error('Error accessing token expiry from localStorage for timer setup:', error);
+      return; // Exit early if localStorage isn't accessible
+    }
     if (expiry) {
       const expiryTime = parseInt(expiry, 10);
       const now = new Date().getTime();

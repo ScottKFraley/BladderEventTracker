@@ -25,6 +25,14 @@ export const authInterceptor: HttpInterceptorFn = (
   const authService = inject(AuthService);
   const router = inject(Router);
 
+  // Mobile compatibility: Add null safety check for authService
+  if (!authService || typeof authService.getToken !== 'function') {
+    console.warn('AuthService not available or getToken method missing, proceeding without token');
+    return next(req).pipe(
+      timeout(getTimeoutForRequest(req))
+    );
+  }
+
   // Add Authorization header if token exists
   const token = authService.getToken();
   if (token) {
@@ -68,7 +76,7 @@ export const authInterceptor: HttpInterceptorFn = (
         timestamp: new Date().toISOString()
       });
       
-      if (error.status === 401 && !isAuthEndpoint(req.url)) {
+      if (error.status === 401 && !isAuthEndpoint(req.url) && authService) {
         return handle401Error(req, next, authService, router);
       }
       return throwError(() => error);
@@ -104,6 +112,15 @@ function handle401Error(
   authService: AuthService,
   router: Router
 ): Observable<any> {
+  // Mobile compatibility: Verify authService is still valid
+  if (!authService || typeof authService.refreshToken !== 'function') {
+    console.error('AuthService not available for token refresh on mobile');
+    if (router && typeof router.navigate === 'function') {
+      router.navigate(['/login']);
+    }
+    return throwError(() => new Error('AuthService not available'));
+  }
+
   // Prevent infinite refresh loops
   if (refreshCount >= MAX_REFRESH_ATTEMPTS) {
     console.warn('Maximum refresh attempts reached, logging out');
@@ -139,8 +156,12 @@ function handle401Error(
         // Check if refresh token is also expired/invalid
         if (refreshError.status === 401 || refreshError.status === 403) {
           console.log('Refresh token expired, logging out');
-          authService.logout();
-          router.navigate(['/login']);
+          if (authService && typeof authService.logout === 'function') {
+            authService.logout();
+          }
+          if (router && typeof router.navigate === 'function') {
+            router.navigate(['/login']);
+          }
         }
         
         return throwError(() => refreshError);
