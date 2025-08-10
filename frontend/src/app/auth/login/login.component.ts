@@ -1,5 +1,5 @@
 // login.component.ts
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { FormGroup, FormControl, Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
@@ -13,10 +13,13 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.sass']
 })
-export class LoginComponent {
+export class LoginComponent implements OnDestroy {
   loginForm: FormGroup;
   errorMessage: string = '';
   isLoading: boolean = false;
+  loadingMessage: string = 'Signing in...';
+  showAdvancedLoading: boolean = false;
+  private loadingTimer: any;
 
   constructor(
     private fb: FormBuilder,
@@ -55,10 +58,21 @@ export class LoginComponent {
     if (this.loginForm.valid) {
       this.isLoading = true;
       this.errorMessage = '';
+      this.loadingMessage = 'Signing in...';
+      this.showAdvancedLoading = false;
+      
+      // Show advanced loading message after 10 seconds
+      this.loadingTimer = setTimeout(() => {
+        if (this.isLoading) {
+          this.loadingMessage = 'Initializing database connection...';
+          this.showAdvancedLoading = true;
+        }
+      }, 10000);
 
       this.authService.login(this.loginForm.value).subscribe({
         next: () => {
           console.log('Login successful, navigating to dashboard');
+          this.clearLoadingTimer();
           this.router.navigate(['/dashboard']); // or your desired route
         },
         error: (error: string) => {
@@ -68,14 +82,36 @@ export class LoginComponent {
             userAgent: navigator.userAgent,
             timestamp: new Date().toISOString()
           });
-          this.errorMessage = error;
+          
+          // Enhanced error messaging for timeouts
+          if (error.includes('timed out') || error.includes('timeout')) {
+            this.errorMessage = 'Login is taking longer than usual. This may be due to database initialization on Azure. Please try again in a moment.';
+          } else {
+            this.errorMessage = error;
+          }
+          
+          this.clearLoadingTimer();
           this.isLoading = false;
+          this.showAdvancedLoading = false;
         },
         complete: () => {
+          this.clearLoadingTimer();
           this.isLoading = false;
+          this.showAdvancedLoading = false;
         }
       });
     }
+  }
+  
+  private clearLoadingTimer(): void {
+    if (this.loadingTimer) {
+      clearTimeout(this.loadingTimer);
+      this.loadingTimer = null;
+    }
+  }
+  
+  ngOnDestroy(): void {
+    this.clearLoadingTimer();
   }
 }
 

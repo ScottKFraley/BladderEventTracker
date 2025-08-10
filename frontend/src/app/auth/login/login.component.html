@@ -33,12 +33,25 @@
         <!-- <button type="submit" [disabled]="!loginForm.valid">Login</button> -->
         <button type="submit" [disabled]="!loginForm.valid || isLoading" class="btn btn-primary mt-4">
           @if (isLoading) {
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          Loading...
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          {{ loadingMessage }}
           } @else {
           Login
           }
         </button>
+        
+        @if (showAdvancedLoading) {
+        <div class="alert alert-info mt-3">
+          <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+            <div>
+              <strong>Please wait...</strong><br>
+              <small>First-time login may take up to 2 minutes due to Azure SQL Database cold start. 
+              Your request is being processed.</small>
+            </div>
+          </div>
+        </div>
+        }
         
         <div class="mt-3">
           <a routerLink="/debug" class="btn btn-outline-secondary btn-sm">Debug Info</a>

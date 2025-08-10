@@ -28,15 +28,21 @@ C:\dev\apps\BladderTracker\appProject/
 ```
 
 ## Testing Requirements
+**IMPORTANT: ALL TESTING MUST BE RUN IN WINDOWS ENVIRONMENT**
+- Testing commands (npm run lint, npm run build, npm test) must be run in Windows, not WSL
+- User will manually run tests after code changes are made in WSL
+
 ### Frontend Tests
-- **Command**: `ng test ...` (run from `frontend` folder)
+- **Command**: `npm run lint` and `npm run test` (run from `frontend` folder in Windows)
 - **Required**: Must pass before deployment
 - **Coverage**: Aim for 80%+ coverage
+- **Environment**: Windows PowerShell/Command Prompt only
 
 ### Backend Tests  
-- **Command**: `dotnet test` (run from `backend` folder)
+- **Command**: `dotnet test` (run from `backend` folder in Windows)
 - **Required**: Must pass before deployment
 - **Coverage**: Aim for 75%+ coverage
+- **Environment**: Windows PowerShell/Command Prompt only
 
 ### CI/CD Integration
 - **Blocker Issue**: Need to update `.bicep` and/or GitHub Actions to run all unit tests before deployment

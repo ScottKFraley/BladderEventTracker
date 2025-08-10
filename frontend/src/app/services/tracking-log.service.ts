@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { Observable, throwError, timeout } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { TrackingLogModel } from '../models/tracking-log.model';
 import { ApiEndpointsService } from './api-endpoints.service';
@@ -10,6 +10,7 @@ import { ApiEndpointsService } from './api-endpoints.service';
 })
 export class TrackingLogService {
   private trackingLogs = signal<TrackingLogModel[]>([]);
+  private readonly API_TIMEOUT = 45000; // 45 seconds for API calls (warm database)
 
   constructor(
     private http: HttpClient,
@@ -48,7 +49,9 @@ export class TrackingLogService {
         });
         
         let errorMessage: string;
-        if (error.status === 0) {
+        if (error.message?.includes('Timeout') || (error as any).name === 'TimeoutError') {
+          errorMessage = `Request timed out after ${this.API_TIMEOUT/1000} seconds. The database may be initializing - please try again.`;
+        } else if (error.status === 0) {
           errorMessage = 'Network connection failed. Please check your internet connection.';
         } else if (error.status === 401) {
           errorMessage = 'Authentication failed. Please log in again.';

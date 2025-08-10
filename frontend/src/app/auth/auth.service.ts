@@ -2,7 +2,7 @@
 import { Injectable, Inject } from '@angular/core';
 import { TOKEN_REFRESH_THRESHOLD } from './auth.config';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError, Subscription } from 'rxjs';
+import { BehaviorSubject, Observable, throwError, Subscription, timeout } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 // import { environment } from '../../environments/environment';
@@ -24,6 +24,8 @@ export interface AuthResponse {
 export class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly TOKEN_EXPIRY_KEY = 'auth_token_expiry';
+  private readonly AUTH_TIMEOUT = 120000; // 2 minutes for Azure SQL cold start
+  private readonly TOKEN_REFRESH_TIMEOUT = 60000; // 1 minute for token refresh
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private tokenExpiryTimer: any;
@@ -63,6 +65,7 @@ export class AuthService {
       credentials,
       { withCredentials: true }
     ).pipe(
+      timeout(this.AUTH_TIMEOUT),
       tap(response => {
         const duration = performance.now() - startTime;
         this.appInsights.trackLogin(credentials.username, true, duration);
@@ -71,7 +74,14 @@ export class AuthService {
       }),
       catchError(error => {
         const duration = performance.now() - startTime;
-        this.appInsights.trackLogin(credentials.username, false, duration, error.message || error);
+        
+        // Enhanced error handling for timeout scenarios
+        let errorMessage = error.message || error;
+        if (error.message?.includes('Timeout') || (error as any).name === 'TimeoutError') {
+          errorMessage = `Login request timed out after ${this.AUTH_TIMEOUT/1000} seconds. This may be due to database initialization. Please try again.`;
+        }
+        
+        this.appInsights.trackLogin(credentials.username, false, duration, errorMessage);
         return this.handleError(error);
       })
     );
@@ -107,6 +117,7 @@ export class AuthService {
       {},
       { withCredentials: true }
     ).pipe(
+      timeout(this.TOKEN_REFRESH_TIMEOUT),
       tap(response => {
         const duration = performance.now() - startTime;
         this.appInsights.trackTokenRefresh(true, duration);
@@ -114,7 +125,14 @@ export class AuthService {
       }),
       catchError(error => {
         const duration = performance.now() - startTime;
-        this.appInsights.trackTokenRefresh(false, duration, error.message || error);
+        
+        // Enhanced error handling for timeout scenarios
+        let errorMessage = error.message || error;
+        if (error.message?.includes('Timeout') || (error as any).name === 'TimeoutError') {
+          errorMessage = `Token refresh timed out after ${this.TOKEN_REFRESH_TIMEOUT/1000} seconds.`;
+        }
+        
+        this.appInsights.trackTokenRefresh(false, duration, errorMessage);
         return this.handleError(error);
       })
     );
@@ -126,6 +144,7 @@ export class AuthService {
       {},
       { withCredentials: true }
     ).pipe(
+      timeout(30000), // 30 seconds for revoke operations
       tap(() => this.logout()),
       catchError(this.handleError)
     );
@@ -137,6 +156,7 @@ export class AuthService {
       {},
       { withCredentials: true }
     ).pipe(
+      timeout(30000), // 30 seconds for revoke operations
       tap(() => this.logout()),
       catchError(this.handleError)
     );
@@ -295,7 +315,12 @@ export class AuthService {
       if (error.status === 401) {
         errorMessage = 'Invalid credentials';
       } else if (error.status === 0) {
-        errorMessage = `Network connection failed (Status: ${error.status}). Check internet connection.`;
+        // Check if this is a timeout error
+        if (error.message?.includes('Timeout') || (error as any).name === 'TimeoutError') {
+          errorMessage = 'Request timed out. The server may be initializing - please try again in a moment.';
+        } else {
+          errorMessage = `Network connection failed (Status: ${error.status}). Check internet connection.`;
+        }
       } else if (error.status >= 500) {
         errorMessage = `Server error (${error.status}): ${error.statusText || 'Internal server error'}`;
       } else if (error.status >= 400) {
