@@ -1,4 +1,5 @@
 import sys
+import uuid
 from datetime import datetime, timedelta
 
 
@@ -40,29 +41,41 @@ def parse_sleeping(line):
     return True
 
 
+def write_batch(outfile, rows):
+    """Write a batch of rows to the output file"""
+    outfile.write(
+        """INSERT INTO [TrackingLog] (
+        [Id],
+        [UserId],
+        [EventDate],
+        [Accident],
+        [ChangePadOrUnderware],
+        [LeakAmount],
+        [Urgency],
+        [AwokeFromSleep],
+        [PainLevel],
+        [Notes]
+      ) VALUES\n"""
+    )
+    
+    for i, row in enumerate(rows):
+        if i > 0:
+            outfile.write(",\n")
+        outfile.write(row)
+    
+    outfile.write(";\n\n")
+
+
 def start_parsing_datafile(input_filename):
     try:
-        USER_ID = "8e3ddf21-4153-4838-abc6-47d553a5d905"
+        USER_ID = "688E6E82-75F3-451F-8A0B-40176C70F7F8"
         
-        with open(input_filename, "r") as infile, open("OneNote_data_for_input.psql", "w") as outfile:
+        with open(input_filename, "r") as infile, open("OneNote_data_for_input.sql", "w") as outfile:
             print("File opened successfully.")
-            # Write the INSERT statement header
-            outfile.write(
-                """INSERT INTO public."TrackingLog" (
-                "EventDate",
-                "Accident",
-                "ChangePadOrUnderware",
-                "LeakAmount",
-                "Urgency",
-                "AwokeFromSleep",
-                "PainLevel",
-                "Notes",
-                "UserId"
-              ) VALUES\n"""
-            )
             
             current_date = None
-            first_row = True
+            rows = []
+            batch_size = 1000
             
             for line in infile:
                 line = line.strip()
@@ -90,51 +103,50 @@ def start_parsing_datafile(input_filename):
                 notes = parse_notes(line)
                 sleeping = parse_sleeping(line)
                 
-                # Use a single-line f-string instead of multi-line
-                # PostgreSQL strings, such as notes, must be surrounded by 
-                # single (') not double (") quotes. -SKF
-                
-                # For notes, we need to:
-                # 1. Escape any single quotes by doubling them for PostgreSQL
-                # 2. Ensure the final string is wrapped in single quotes, not double quotes
+                # For notes, escape single quotes for SQL Server
                 if notes:
-                    # Escape single quotes for PostgreSQL
                     escaped_notes = notes.replace("'", "''")
-                    # Wrap in single quotes
                     notes_value = f"'{escaped_notes}'"
                 else:
-                    notes_value = 'DEFAULT'
+                    notes_value = 'NULL'
 
-                values = f"(TIMESTAMP WITH TIME ZONE '{full_datetime.isoformat()}', " \
-                        f"DEFAULT, " \
-                        f"DEFAULT, " \
-                        f"DEFAULT, " \
-                        f"{urgency_to_int(urgency) if urgency else 'DEFAULT'}, " \
-                        f"{sleeping}, " \
-                        f"{pain_level if pain_level else 'DEFAULT'}, " \
-                        f"{notes_value}, " \
-                        f"'{USER_ID}')"  
-
-                if not first_row:
-                    outfile.write(", \n")
-                else:
-                    first_row = False
+                # Generate UUID for Id column
+                record_id = str(uuid.uuid4()).upper()
                 
-                outfile.write(values)
+                values = f"('{record_id}', " \
+                        f"'{USER_ID}', " \
+                        f"'{full_datetime.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}', " \
+                        f"0, " \
+                        f"0, " \
+                        f"0, " \
+                        f"{urgency_to_int(urgency) if urgency else 1}, " \
+                        f"{1 if sleeping else 0}, " \
+                        f"{pain_level if pain_level else 0}, " \
+                        f"{notes_value})"
+                
+                rows.append(values)
+                
+                # Write batch when we reach batch_size
+                if len(rows) >= batch_size:
+                    write_batch(outfile, rows)
+                    rows = []
             
-            # End the statement
-            outfile.write(";\n")
+            # Write any remaining rows
+            if rows:
+                write_batch(outfile, rows)
+            
             print("SQL file generated successfully.")
+            return True
     
     except FileNotFoundError:
         print(f"Error: The file '{input_filename}' was not found.")
-        sys.exit(1)
+        return False
     except PermissionError:
         print(f"Error: Permission denied accessing '{input_filename}'")
-        sys.exit(1)
+        return False
     except Exception as e:
         print(f"An error occurred: {str(e)}")
-        sys.exit(1)
+        return False
         
 # Main execution
 if __name__ == "__main__":
@@ -143,6 +155,9 @@ if __name__ == "__main__":
         sys.exit(1)
     
     input_filename = sys.argv[1]
-    start_parsing_datafile(input_filename)
+    success = start_parsing_datafile(input_filename)
     
-    print("Done.")
+    if success:
+        print("Done.")
+    else:
+        sys.exit(1)

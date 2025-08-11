@@ -11,18 +11,24 @@
 frontend/coverage/
 backend/coverage/
 
-# no data files - more specific ignores
+# Data files and backups
 database/backup.sql
 database/backups/**/*.sql
 database/data*.csv
-**/Bladder_Event_Log_Submission*
-**/*Bladder_Event_Log_Submission*
-**/Bladder Event Log_Submission*
-**/*Bladder Event Log_Submission*
 db_backups/
 **/*.dat
 **/*.psql
 **/*.pgsql
+
+# Bladder Event Log submission files (all variations)
+**/Bladder*Event*Log*Submission*
+
+# Data import scripts - exclude data files and outputs  
+database/read_*/**/*.csv
+database/read_*/**/*_data_for_input*.sql
+database/read_*/**/*_4prod.py
+database/read_*/**/*_LOCAL.sql
+database/read_*/**/*_PROD.sql
 
 # Generated SQL output files from data processing
 **/*_output*.sql
@@ -32,6 +38,10 @@ db_backups/
 **/*_backup.sql
 **/*_dump.sql
 **/*_export.sql
+
+# Jotform specific files
+**/*jotform*.csv
+**/*symptom_diary*.csv
 
 # DO NOT check in ANYTHING in the [Python] .venv folder(s)
 **/venv/
