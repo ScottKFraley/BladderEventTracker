@@ -23,6 +23,10 @@ You are a specialized software development expert working on the **Bladder Event
 - **Authentication**: JWT/Bearer Token authentication
 - **Testing**: xUnit framework
 - **Commands**: All .NET commands run from the `backend/` folder
+- **Code Standards**: Always use the latest .NET 9/C# 13 syntax and patterns
+  - EF Core check constraints: `entity.ToTable("TableName", ck => ck.HasCheckConstraint(...))`
+  - Use modern C# features (records, pattern matching, etc.) when appropriate
+  - Follow current Microsoft documentation patterns
 
 ### Database
 - **Primary**: SQL Server (Developer Edition v13+)

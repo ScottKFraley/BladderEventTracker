@@ -3,6 +3,7 @@ using trackerApi.Services;
 
 using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("trackerApi.UnitTests")]
+[assembly: InternalsVisibleTo("trackerApi.IntegrationTests")]
 
 namespace trackerApi.EndPoints;
 

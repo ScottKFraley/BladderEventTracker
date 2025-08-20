@@ -160,4 +160,97 @@ public class TrackerEndpointsTests
         var notFoundResult = Assert.IsType<NotFound<string>>(result);
         Assert.Equal(expectedMessage, notFoundResult.Value);
     }
+
+    // Tests for 0 value validation
+    [Fact, Trait("Category", "Unit")]
+    public async Task HandleCreateLogRecord_ReturnsCreatedResult_WhenAllFieldsAreZero()
+    {
+        // Arrange - Create item with all range fields set to 0
+        var userId = Guid.NewGuid();
+        var logItem = new TrackingLogItem 
+        { 
+            UserId = userId,
+            EventDate = DateTime.Now,
+            LeakAmount = 0,  // Should be valid (Range 0-3)
+            Urgency = 0,     // Should be valid (Range 0-4) 
+            PainLevel = 0    // Should be valid (Range 0-10)
+        };
+        
+        var createdItem = new TrackingLogItem 
+        { 
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventDate = logItem.EventDate,
+            LeakAmount = 0,
+            Urgency = 0,
+            PainLevel = 0
+        };
+
+        _mockTrackingService
+            .Setup(s => s.CreateLogRecordAsync(logItem))
+            .ReturnsAsync(createdItem);
+
+        // Act
+        var result = await TrackerEndpoints.HandleCreateLogRecord(
+            logItem,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var createdResult = Assert.IsType<Created<TrackingLogItem>>(result);
+        Assert.Equal($"/tracking/{createdItem.Id}", createdResult.Location);
+        Assert.Equal(createdItem, createdResult.Value);
+        
+        // Verify service was called with 0 values
+        _mockTrackingService.Verify(s => s.CreateLogRecordAsync(It.Is<TrackingLogItem>(
+            item => item.LeakAmount == 0 && item.Urgency == 0 && item.PainLevel == 0)), 
+            Times.Once);
+    }
+
+    // Boundary value tests
+    [Theory, Trait("Category", "Unit")]
+    [InlineData(0, 0, 0)]     // All minimum values
+    [InlineData(3, 4, 10)]    // All maximum values  
+    [InlineData(1, 2, 5)]     // Mixed valid values
+    [InlineData(0, 4, 10)]    // Min LeakAmount, max others
+    [InlineData(3, 0, 0)]     // Max LeakAmount, min others
+    public async Task HandleCreateLogRecord_ReturnsCreatedResult_WithBoundaryValues(
+        int leakAmount, int urgency, int painLevel)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var logItem = new TrackingLogItem
+        {
+            UserId = userId,
+            EventDate = DateTime.Now,
+            LeakAmount = leakAmount,
+            Urgency = urgency,
+            PainLevel = painLevel
+        };
+
+        var createdItem = new TrackingLogItem
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventDate = logItem.EventDate,
+            LeakAmount = leakAmount,
+            Urgency = urgency,
+            PainLevel = painLevel
+        };
+
+        _mockTrackingService
+            .Setup(s => s.CreateLogRecordAsync(It.IsAny<TrackingLogItem>()))
+            .ReturnsAsync(createdItem);
+
+        // Act
+        var result = await TrackerEndpoints.HandleCreateLogRecord(
+            logItem,
+            _mockTrackingService.Object,
+            _mockLogger.Object);
+
+        // Assert
+        var createdResult = Assert.IsType<Created<TrackingLogItem>>(result);
+        Assert.Equal($"/tracking/{createdItem.Id}", createdResult.Location);
+        Assert.Equal(createdItem, createdResult.Value);
+    }
 }

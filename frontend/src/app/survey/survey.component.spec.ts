@@ -78,6 +78,105 @@ describe('SurveyComponent', () => {
     expect(surveyService.submitSurvey).toHaveBeenCalledWith(testData);
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
   });
+
+  it('should successfully submit survey with all zero values', () => {
+    // Get the survey model instance
+    const surveyModel = component.surveyModel as Model;
+    
+    // Create test data with all zero values for validation fields
+    const testDataWithZeros = {
+      EventDate: '2024-01-20T10:30:00',
+      Accident: false,
+      ChangePadOrUnderware: false,
+      LeakAmount: 0,    // Test zero leak amount (no leakage)
+      Urgency: 0,       // Test zero urgency (no urgency)
+      AwokeFromSleep: false,
+      PainLevel: 0,     // Test zero pain level (no pain)
+      Notes: 'Testing all zero values - no urgency, no pain, no leak'
+    };
+
+    // Set the data
+    surveyModel.data = testDataWithZeros;
+
+    const options = {
+      isCompleteOnTrigger: true,
+      clearSaveMessages: () => {},
+      showSaveSuccess: () => {},
+      showSaveError: () => {},
+      showSaveInProgress: () => {},
+      showDataSaving: () => {},
+      showDataSavingError: () => {},
+      showDataSavingSuccess: () => {},
+      showDataSavingClear: () => {}
+    };
+
+    // Simulate survey completion
+    surveyModel.onComplete.fire(surveyModel, options);
+
+    // Verify the service was called with zero values preserved
+    expect(surveyService.submitSurvey).toHaveBeenCalledWith(testDataWithZeros);
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+  });
+
+  it('should successfully submit survey with maximum boundary values', () => {
+    // Get the survey model instance  
+    const surveyModel = component.surveyModel as Model;
+    
+    // Create test data with maximum boundary values
+    const testDataMaxValues = {
+      EventDate: '2024-01-20T15:45:00',
+      Accident: true,
+      ChangePadOrUnderware: true, 
+      LeakAmount: 3,    // Maximum valid value
+      Urgency: 4,       // Maximum valid value
+      AwokeFromSleep: true,
+      PainLevel: 10,    // Maximum valid value
+      Notes: 'Testing maximum boundary values'
+    };
+
+    // Set the data
+    surveyModel.data = testDataMaxValues;
+
+    const options = {
+      isCompleteOnTrigger: true,
+      clearSaveMessages: () => {},
+      showSaveSuccess: () => {},
+      showSaveError: () => {},
+      showSaveInProgress: () => {},
+      showDataSaving: () => {},
+      showDataSavingError: () => {},
+      showDataSavingSuccess: () => {},
+      showDataSavingClear: () => {}
+    };
+
+    // Simulate survey completion
+    surveyModel.onComplete.fire(surveyModel, options);
+
+    // Verify the service was called with maximum values preserved
+    expect(surveyService.submitSurvey).toHaveBeenCalledWith(testDataMaxValues);
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+  });
+
+  it('should verify survey dropdown choices include zero values', () => {
+    // Test that the survey configuration includes 0 as valid choice
+    const urgencyElement = component.surveyModel.getQuestionByName('Urgency');
+    const painLevelElement = component.surveyModel.getQuestionByName('PainLevel');
+    const leakAmountElement = component.surveyModel.getQuestionByName('LeakAmount');
+
+    // Verify 0 is a valid choice for each field using bracket notation
+    expect(urgencyElement['choices']).toContain(jasmine.objectContaining({ value: 0 }));
+    expect(painLevelElement['choices']).toContain(jasmine.objectContaining({ value: 0 }));
+    expect(leakAmountElement['choices']).toContain(jasmine.objectContaining({ value: 0 }));
+
+    // Verify the text descriptions for zero values
+    const urgencyZeroChoice = urgencyElement['choices'].find((c: any) => c.value === 0);
+    const painZeroChoice = painLevelElement['choices'].find((c: any) => c.value === 0);
+    const leakZeroChoice = leakAmountElement['choices'].find((c: any) => c.value === 0);
+
+    expect(urgencyZeroChoice.text).toBe('0 - No real urgency');
+    expect(painZeroChoice.text).toBe('0 - No Pain');
+    expect(leakZeroChoice.text).toBe('0 - None');
+  });
 });
 
 // import { ComponentFixture, TestBed } from '@angular/core/testing';
