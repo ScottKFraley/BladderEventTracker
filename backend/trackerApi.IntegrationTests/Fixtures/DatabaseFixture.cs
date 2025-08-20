@@ -101,7 +101,9 @@ public class DatabaseFixture : IAsyncLifetime
 
     private async Task CleanupTestDataAsync()
     {
-        await Context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"Users\", \"TrackingLogs\" RESTART IDENTITY CASCADE");
+        // Use SQL Server syntax instead of PostgreSQL
+        await Context.Database.ExecuteSqlRawAsync("DELETE FROM TrackingLog");
+        await Context.Database.ExecuteSqlRawAsync("DELETE FROM Users WHERE Username = 'testuser'");
     }
 }
 
