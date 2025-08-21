@@ -2,7 +2,9 @@ import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpErrorResponse, HttpR
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { EnhancedErrorService } from '../services/enhanced-error.service';
 import { Observable, throwError, BehaviorSubject, filter, take, switchMap, catchError, EMPTY, tap, timeout } from 'rxjs';
+import { ErrorContext } from '../models/api-error.model';
 
 let isRefreshing = false;
 let refreshTokenSubject: BehaviorSubject<string | null> = new BehaviorSubject<string | null>(null);
@@ -24,12 +26,32 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<any> => {
   const authService = inject(AuthService);
   const router = inject(Router);
+  const errorService = inject(EnhancedErrorService);
+
+  // Generate correlation ID for this request
+  const correlationId = errorService.generateCorrelationId();
+  const requestKey = `${req.method}-${req.url}`;
+  errorService.storeCorrelationId(requestKey, correlationId);
+
+  // Add correlation ID to request headers
+  req = req.clone({
+    setHeaders: {
+      'X-Correlation-ID': correlationId,
+      'X-Request-Source': 'angular-app',
+      'X-User-Agent': navigator.userAgent
+    }
+  });
 
   // Mobile compatibility: Add null safety check for authService
   if (!authService || typeof authService.getToken !== 'function') {
     console.warn('AuthService not available or getToken method missing, proceeding without token');
     return next(req).pipe(
-      timeout(getTimeoutForRequest(req))
+      timeout(getTimeoutForRequest(req)),
+      catchError((error) => {
+        const context = createErrorContext(req, error);
+        const enhancedError = errorService.logError(error, context);
+        return throwError(() => enhancedError);
+      })
     );
   }
 
@@ -50,8 +72,10 @@ export const authInterceptor: HttpInterceptorFn = (
         method: req.method,
         url: req.url,
         status: response instanceof HttpResponse ? response.status : 'unknown',
+        correlationId: correlationId,
         userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        responseHeaders: response instanceof HttpResponse ? response.headers.keys() : []
       });
       
       // Reset refresh count on successful requests (except auth endpoints)
@@ -60,26 +84,40 @@ export const authInterceptor: HttpInterceptorFn = (
       }
     }),
     catchError((error: HttpErrorResponse) => {
-      // Enhanced logging for timeout errors
-      const isTimeout = error.message?.includes('Timeout') || (error as any).name === 'TimeoutError';
-      
-      console.error('HTTP Interceptor Error:', {
-        method: req.method,
-        url: req.url,
-        status: error.status,
-        statusText: error.statusText,
-        message: error.message,
-        error: error.error,
-        isTimeout: isTimeout,
+      // Create enhanced error context
+      const context = createErrorContext(req, error, {
+        correlationId,
         timeoutUsed: timeoutMs,
-        userAgent: navigator.userAgent,
+        isRefreshing,
+        refreshCount
+      });
+
+      // Log enhanced error information
+      const enhancedError = errorService.logError(error, context);
+      
+      // Enhanced logging for debugging
+      console.error('HTTP Interceptor Enhanced Error:', {
+        correlationId,
+        enhancedError,
+        originalError: {
+          method: req.method,
+          url: req.url,
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error,
+          headers: error.headers?.keys?.() || []
+        },
+        context,
+        networkInfo: getNetworkInfo(),
         timestamp: new Date().toISOString()
       });
       
       if (error.status === 401 && !isAuthEndpoint(req.url) && authService) {
-        return handle401Error(req, next, authService, router);
+        return handle401Error(req, next, authService, router, errorService, correlationId);
       }
-      return throwError(() => error);
+      
+      return throwError(() => enhancedError);
     })
   );
 };
@@ -110,7 +148,9 @@ function handle401Error(
   request: HttpRequest<any>, 
   next: HttpHandlerFn,
   authService: AuthService,
-  router: Router
+  router: Router,
+  errorService: EnhancedErrorService,
+  correlationId: string
 ): Observable<any> {
   // Mobile compatibility: Verify authService is still valid
   if (!authService || typeof authService.refreshToken !== 'function') {
@@ -216,4 +256,131 @@ function getTimeoutForRequest(req: HttpRequest<any>): number {
   
   // Default for API calls
   return TIMEOUT_CONFIG.API_CALLS;
+}
+
+/**
+ * Create enhanced error context for debugging
+ */
+function createErrorContext(
+  req: HttpRequest<any>, 
+  error: any, 
+  additionalContext: any = {}
+): ErrorContext {
+  return {
+    userAgent: navigator.userAgent,
+    url: req.url,
+    method: req.method,
+    requestHeaders: extractHeaders(req.headers),
+    responseHeaders: error.headers ? extractHeaders(error.headers) : undefined,
+    networkConnection: getNetworkConnection(),
+    timestamp: new Date().toISOString(),
+    userId: getCurrentUserId(),
+    sessionId: getSessionId(),
+    ...additionalContext
+  };
+}
+
+/**
+ * Extract headers safely for debugging
+ */
+function extractHeaders(headers: any): Record<string, string> {
+  const extracted: Record<string, string> = {};
+  
+  try {
+    if (headers && typeof headers.keys === 'function') {
+      const keys = headers.keys();
+      for (const key of keys) {
+        // Mask sensitive headers
+        if (key.toLowerCase().includes('authorization')) {
+          extracted[key] = '[MASKED]';
+        } else {
+          extracted[key] = headers.get(key);
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to extract headers:', error);
+  }
+  
+  return extracted;
+}
+
+/**
+ * Get network connection information
+ */
+function getNetworkConnection(): string {
+  try {
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      return connection?.effectiveType || 'unknown';
+    }
+    return navigator.onLine ? 'online' : 'offline';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Get comprehensive network information for debugging
+ */
+function getNetworkInfo(): any {
+  try {
+    const info: any = {
+      online: navigator.onLine,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      cookieEnabled: navigator.cookieEnabled
+    };
+
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection;
+      info.connection = {
+        effectiveType: connection?.effectiveType,
+        downlink: connection?.downlink,
+        rtt: connection?.rtt,
+        saveData: connection?.saveData
+      };
+    }
+
+    if ('serviceWorker' in navigator) {
+      info.serviceWorkerAvailable = true;
+    }
+
+    return info;
+  } catch {
+    return { error: 'Failed to get network info' };
+  }
+}
+
+/**
+ * Get current user ID for context
+ */
+function getCurrentUserId(): string | undefined {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.sub || payload.userId || payload.user_id;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return undefined;
+}
+
+/**
+ * Get session ID for correlation
+ */
+function getSessionId(): string | undefined {
+  try {
+    let sessionId = sessionStorage.getItem('bt_session_id');
+    if (!sessionId) {
+      sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem('bt_session_id', sessionId);
+    }
+    return sessionId;
+  } catch {
+    return undefined;
+  }
 }
