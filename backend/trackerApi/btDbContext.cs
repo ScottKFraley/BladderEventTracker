@@ -42,7 +42,11 @@ public class AppDbContext : DbContext
         // TrackingLog table
         modelBuilder.Entity<TrackingLogItem>(entity =>
         {
-            entity.ToTable("TrackingLog");  // Your existing table name configuration
+            entity.ToTable("TrackingLog", ck => {
+                ck.HasCheckConstraint("CK_TrackingLog_LeakAmount", "LeakAmount >= 0 AND LeakAmount <= 3");
+                ck.HasCheckConstraint("CK_TrackingLog_Urgency", "Urgency >= 0 AND Urgency <= 4");
+                ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "PainLevel >= 0 AND PainLevel <= 10");
+            });
 
             // Configure Id as uniqueidentifier with default value
             entity.Property(e => e.Id)
@@ -70,18 +74,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.AwokeFromSleep)
                 .HasDefaultValue(false);
 
-            // Configure numeric fields with defaults and constraints
-            entity.Property(e => e.LeakAmount)
-                .HasDefaultValue(1)
-                .HasAnnotation("CheckConstraint", "LeakAmount >= 0 AND LeakAmount <= 3");
-
-            entity.Property(e => e.Urgency)
-                .HasDefaultValue(1)
-                .HasAnnotation("CheckConstraint", "Urgency >= 0 AND Urgency <= 4");
-
-            entity.Property(e => e.PainLevel)
-                .HasDefaultValue(1)
-                .HasAnnotation("CheckConstraint", "PainLevel >= 0 AND PainLevel <= 10");
+            // Configure numeric fields - let database defaults handle default values
+            // Remove HasDefaultValue() to allow explicit 0 values to be saved
         });
 
         // Users table

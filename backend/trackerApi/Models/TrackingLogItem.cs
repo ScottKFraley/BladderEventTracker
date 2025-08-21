@@ -22,12 +22,15 @@ public class TrackingLogItem
 
     public bool ChangePadOrUnderware { get; set; } = false;
 
+    [Range(0, 3)]
     public int LeakAmount { get; set; } = 1;
 
+    [Range(0, 4)]
     public int Urgency { get; set; } = 1;
 
     public bool AwokeFromSleep { get; set; } = false;
 
+    [Range(0, 10)]
     public int PainLevel { get; set; } = 1;
 
     public string? Notes { get; set; }
