@@ -133,6 +133,7 @@ Thumbs.db
 *.deploy
 *.nupkg
 *.symbols
+!frontend/src/app/debug/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/

@@ -1,24 +1,43 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MobileDebugService } from '../services/mobile-debug.service';
 import { AuthService } from '../auth/auth.service';
 import { TrackingLogService } from '../services/tracking-log.service';
+import { DebugInfoService } from '../services/debug-info.service';
+import { EnhancedErrorService } from '../services/enhanced-error.service';
+import { ApplicationInsightsLogsService, LogQueryResult } from '../services/application-insights-logs.service';
 import { Subscription, interval } from 'rxjs';
+import { DebugInfo, ErrorPatternAlert, AuthenticationError, LogEntry } from '../models/api-error.model';
 
 @Component({
   selector: 'app-debug',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './debug.component.html',
   styleUrls: ['./debug.component.sass']
 })
 export class DebugComponent implements OnInit, OnDestroy {
-  debugInfo: any = {};
+  debugInfo: DebugInfo | null = null;
   lastError: any = null;
   logs: string[] = [];
   isTestingConnection = false;
   connectionTestResult: any = null;
+  errorPatterns: ErrorPatternAlert[] = [];
+  authErrors: AuthenticationError[] = [];
+  showDetailedLogs = false;
+  showErrorHistory = false;
+  showSystemInfo = false;
+  showAppInsightsLogs = false;
+  
+  // Application Insights logs
+  appInsightsLogs: LogEntry[] = [];
+  isLoadingLogs = false;
+  logsQueryResult: LogQueryResult | null = null;
+  selectedLogFilter = 'recent';
+  searchTerm = '';
+  correlationIdSearch = '';
   
   private subscription = new Subscription();
   private originalConsoleError = console.error;
@@ -28,6 +47,9 @@ export class DebugComponent implements OnInit, OnDestroy {
     private mobileDebug: MobileDebugService,
     private authService: AuthService,
     private trackingLogService: TrackingLogService,
+    private debugInfoService: DebugInfoService,
+    private enhancedErrorService: EnhancedErrorService,
+    private appInsightsLogsService: ApplicationInsightsLogsService,
     private router: Router
   ) {}
 
@@ -37,12 +59,18 @@ export class DebugComponent implements OnInit, OnDestroy {
     // Intercept console messages to display on page
     this.interceptConsole();
     
-    // Auto-refresh debug info every 5 seconds
-    const refreshSub = interval(5000).subscribe(() => {
+    // Subscribe to error patterns
+    const errorPatternsSub = this.enhancedErrorService.getErrorPatterns().subscribe(patterns => {
+      this.errorPatterns = patterns;
+    });
+    
+    // Auto-refresh debug info every 10 seconds (reduced frequency for enhanced data)
+    const refreshSub = interval(10000).subscribe(() => {
       this.refreshDebugInfo();
     });
     
     this.subscription.add(refreshSub);
+    this.subscription.add(errorPatternsSub);
   }
 
   ngOnDestroy(): void {
@@ -80,7 +108,19 @@ export class DebugComponent implements OnInit, OnDestroy {
   }
 
   refreshDebugInfo(): void {
-    this.debugInfo = this.mobileDebug.getDebugInfo();
+    // Get enhanced debug info
+    this.debugInfoService.getComprehensiveDebugInfo().subscribe({
+      next: (debugInfo) => {
+        this.debugInfo = debugInfo;
+        this.authErrors = debugInfo.authentication.authErrors;
+      },
+      error: (error) => {
+        console.error('Failed to get debug info:', error);
+        // Fallback to mobile debug info
+        this.debugInfo = this.mobileDebug.getDebugInfo() as any;
+      }
+    });
+    
     this.lastError = this.mobileDebug.getLastError();
   }
 
@@ -150,27 +190,305 @@ export class DebugComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
-  copyDebugInfo(): void {
-    const debugData = {
-      timestamp: new Date().toISOString(),
-      lastError: this.lastError,
-      debugInfo: this.debugInfo,
-      logs: this.logs.slice(0, 10), // Last 10 logs
-      connectionTest: this.connectionTestResult
-    };
+  // New enhanced debugging methods
+  toggleDetailedLogs(): void {
+    this.showDetailedLogs = !this.showDetailedLogs;
+  }
 
-    const text = JSON.stringify(debugData, null, 2);
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        this.addLog('Debug info copied to clipboard');
-      }).catch(() => {
-        this.showTextToCopy(text);
-      });
-    } else {
-      this.showTextToCopy(text);
+  toggleErrorHistory(): void {
+    this.showErrorHistory = !this.showErrorHistory;
+  }
+
+  toggleSystemInfo(): void {
+    this.showSystemInfo = !this.showSystemInfo;
+  }
+
+  clearErrorHistory(): void {
+    this.enhancedErrorService.clearErrorHistory();
+    this.addLog('Error history cleared');
+    this.refreshDebugInfo();
+  }
+
+  async exportDebugInfo(): Promise<void> {
+    try {
+      const exported = await this.debugInfoService.exportDebugInfo();
+      this.downloadFile(exported, 'bladder-tracker-debug.json', 'application/json');
+      this.addLog('Debug info exported successfully');
+    } catch (error) {
+      this.addLog(`Failed to export debug info: ${error}`);
     }
   }
+
+  async copyDebugInfo(): Promise<void> {
+    try {
+      const success = await this.debugInfoService.copyDebugInfoToClipboard();
+      if (success) {
+        this.addLog('Debug info copied to clipboard');
+      } else {
+        this.addLog('Failed to copy debug info to clipboard');
+      }
+    } catch (error) {
+      this.addLog(`Failed to copy debug info: ${error}`);
+    }
+  }
+
+  forceTokenRefresh(): void {
+    this.addLog('Forcing token refresh...');
+    this.authService.refreshToken().subscribe({
+      next: () => {
+        this.addLog('Token refresh successful');
+        this.refreshDebugInfo();
+      },
+      error: (error) => {
+        this.addLog(`Token refresh failed: ${error}`);
+      }
+    });
+  }
+
+  clearAuthTokens(): void {
+    this.addLog('Clearing authentication tokens...');
+    try {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      sessionStorage.clear();
+      this.addLog('Authentication tokens cleared');
+      this.refreshDebugInfo();
+    } catch (error) {
+      this.addLog(`Failed to clear tokens: ${error}`);
+    }
+  }
+
+  simulateNetworkError(): void {
+    this.addLog('Simulating network error...');
+    // Create a fake error for testing
+    const fakeError = new Error('Simulated network timeout');
+    (fakeError as any).status = 408;
+    (fakeError as any).statusText = 'Request Timeout';
+    this.enhancedErrorService.logError(fakeError, {
+      url: '/api/test/simulation',
+      method: 'GET',
+      userAgent: navigator.userAgent,
+      networkConnection: 'unknown',
+      timestamp: new Date().toISOString()
+    });
+    this.addLog('Network error simulated');
+  }
+
+  getTokenExpiration(): string {
+    if (!this.debugInfo?.user.tokenExpiration) {
+      return 'N/A';
+    }
+    
+    const expiry = new Date(this.debugInfo.user.tokenExpiration);
+    const now = new Date();
+    const diffMs = expiry.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      return 'Expired';
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    
+    if (diffHours > 0) {
+      return `${diffHours}h ${diffMinutes % 60}m`;
+    } else {
+      return `${diffMinutes}m`;
+    }
+  }
+
+  getErrorSeverityClass(severity: string): string {
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'text-danger fw-bold';
+      case 'high': return 'text-danger';
+      case 'medium': return 'text-warning';
+      case 'low': return 'text-info';
+      default: return 'text-muted';
+    }
+  }
+
+  private downloadFile(content: string, filename: string, contentType: string): void {
+    const blob = new Blob([content], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Application Insights log viewing methods
+  toggleAppInsightsLogs(): void {
+    this.showAppInsightsLogs = !this.showAppInsightsLogs;
+    if (this.showAppInsightsLogs && this.appInsightsLogs.length === 0) {
+      this.loadLogs();
+    }
+  }
+
+  loadLogs(): void {
+    this.isLoadingLogs = true;
+    this.addLog(`Loading ${this.selectedLogFilter} logs...`);
+
+    let logObservable;
+    
+    switch (this.selectedLogFilter) {
+      case 'auth':
+        logObservable = this.appInsightsLogsService.getAuthenticationLogs(24, 30);
+        break;
+      case 'errors':
+        logObservable = this.appInsightsLogsService.getErrorLogs(24, 50);
+        break;
+      case 'performance':
+        logObservable = this.appInsightsLogsService.getPerformanceLogs(1, 20);
+        break;
+      case 'search':
+        if (!this.searchTerm.trim()) {
+          this.addLog('Please enter a search term');
+          this.isLoadingLogs = false;
+          return;
+        }
+        logObservable = this.appInsightsLogsService.searchLogs(this.searchTerm, 6, 30);
+        break;
+      case 'correlation':
+        if (!this.correlationIdSearch.trim()) {
+          this.addLog('Please enter a correlation ID');
+          this.isLoadingLogs = false;
+          return;
+        }
+        logObservable = this.appInsightsLogsService.getLogsByCorrelationId(this.correlationIdSearch, 6);
+        break;
+      default:
+        logObservable = this.appInsightsLogsService.getRecentLogs(1, 50);
+    }
+
+    logObservable.subscribe({
+      next: (result) => {
+        this.logsQueryResult = result;
+        this.appInsightsLogs = result.logs;
+        this.addLog(`Loaded ${result.logs.length} log entries in ${result.queryDuration}ms`);
+        this.isLoadingLogs = false;
+        
+        // Update debug info with logs
+        if (this.debugInfo) {
+          this.debugInfo.logs = {
+            entries: result.logs,
+            lastFetched: result.lastFetched,
+            totalEntries: result.totalResults
+          };
+        }
+      },
+      error: (error) => {
+        this.addLog(`Failed to load logs: ${error.message}`);
+        this.isLoadingLogs = false;
+      }
+    });
+  }
+
+  onLogFilterChange(): void {
+    if (this.showAppInsightsLogs) {
+      this.loadLogs();
+    }
+  }
+
+  searchLogs(): void {
+    if (this.selectedLogFilter !== 'search') {
+      this.selectedLogFilter = 'search';
+    }
+    this.loadLogs();
+  }
+
+  searchByCorrelationId(): void {
+    if (this.selectedLogFilter !== 'correlation') {
+      this.selectedLogFilter = 'correlation';
+    }
+    this.loadLogs();
+  }
+
+  getLogLevelClass(level: string): string {
+    switch (level?.toLowerCase()) {
+      case 'error': return 'text-danger';
+      case 'warn': return 'text-warning';
+      case 'info': return 'text-info';
+      case 'debug': return 'text-muted';
+      default: return 'text-dark';
+    }
+  }
+
+  getLogSourceBadgeClass(source: string): string {
+    switch (source?.toLowerCase()) {
+      case 'frontend': return 'badge bg-primary';
+      case 'backend': return 'badge bg-success';
+      case 'nginx': return 'badge bg-info';
+      case 'azure': return 'badge bg-warning';
+      default: return 'badge bg-secondary';
+    }
+  }
+
+  formatLogTimestamp(timestamp: string): string {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    } catch {
+      return timestamp;
+    }
+  }
+
+  formatLogDetails(details: any): string {
+    if (!details) return '';
+    try {
+      return JSON.stringify(details, null, 2);
+    } catch {
+      return String(details);
+    }
+  }
+
+  copyLogToClipboard(log: LogEntry): void {
+    const logText = `[${log.timestamp}] ${log.level.toUpperCase()} (${log.source}): ${log.message}`;
+    navigator.clipboard?.writeText(logText).then(() => {
+      this.addLog('Log entry copied to clipboard');
+    }).catch(() => {
+      this.addLog('Failed to copy log entry');
+    });
+  }
+
+  exportAppInsightsLogs(): void {
+    if (this.appInsightsLogs.length === 0) {
+      this.addLog('No logs to export');
+      return;
+    }
+
+    const exportData = {
+      exportTimestamp: new Date().toISOString(),
+      queryResult: this.logsQueryResult,
+      filter: this.selectedLogFilter,
+      searchTerm: this.searchTerm,
+      correlationId: this.correlationIdSearch,
+      appInsightsConfig: this.appInsightsLogsService.getConfigurationStatus(),
+      logs: this.appInsightsLogs
+    };
+
+    const content = JSON.stringify(exportData, null, 2);
+    this.downloadFile(content, 'app-insights-logs.json', 'application/json');
+    this.addLog('Application Insights logs exported');
+  }
+
+  refreshLogs(): void {
+    if (this.showAppInsightsLogs) {
+      this.loadLogs();
+    }
+  }
+
+  getAppInsightsConfigStatus(): any {
+    return this.appInsightsLogsService.getConfigurationStatus();
+  }
+
+  isAppInsightsConfigured(): boolean {
+    return this.appInsightsLogsService.isConfigured();
+  }
+
+  // Removed duplicate method - using enhanced version above
 
   private showTextToCopy(text: string): void {
     // Create a textarea element to show the text for manual copying

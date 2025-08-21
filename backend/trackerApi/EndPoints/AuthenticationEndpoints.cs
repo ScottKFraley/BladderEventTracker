@@ -42,13 +42,29 @@ public static class AuthenticationEndpoints
                     if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
                     {
                         stopwatch.Stop();
+                        var failureReason = user == null ? "UserNotFound" : "InvalidPassword";
                         loginEvent.Properties["Success"] = "false";
-                        loginEvent.Properties["FailureReason"] = user == null ? "UserNotFound" : "InvalidPassword";
+                        loginEvent.Properties["FailureReason"] = failureReason;
                         loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
                         telemetryClient.TrackEvent(loginEvent);
                         
                         logger.LogInformation("Password verification result: Failed for user {Username}", loginDto.Username);
-                        return Results.Unauthorized();
+                        
+                        // Enhanced error response
+                        var correlationId = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
+                            ?? Guid.NewGuid().ToString();
+                        
+                        var errorResponse = new ErrorResponse
+                        {
+                            Error = "AUTHENTICATION_FAILED",
+                            Message = "Invalid username or password",
+                            StatusCode = 401,
+                            CorrelationId = correlationId,
+                            Timestamp = DateTime.UtcNow,
+                            SuggestedAction = "Please check your username and password and try again"
+                        };
+                        
+                        return Results.Json(errorResponse, statusCode: StatusCodes.Status401Unauthorized);
                     }
 
                     logger.LogInformation("Password verification successful for user {Username}", loginDto.Username);
@@ -102,7 +118,25 @@ public static class AuthenticationEndpoints
                     loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
                     telemetryClient.TrackEvent(loginEvent);
                     telemetryClient.TrackException(ex);
-                    throw;
+                    
+                    logger.LogError(ex, "Login error for user {Username}", loginDto.Username);
+                    
+                    // Enhanced error response for exceptions
+                    var correlationId = httpContext.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
+                        ?? Guid.NewGuid().ToString();
+                    
+                    var errorResponse = new ErrorResponse
+                    {
+                        Error = "INTERNAL_SERVER_ERROR",
+                        Message = "An error occurred during login",
+                        Details = ex.Message,
+                        StatusCode = 500,
+                        CorrelationId = correlationId,
+                        Timestamp = DateTime.UtcNow,
+                        SuggestedAction = "Please try again later or contact support if the issue persists"
+                    };
+                    
+                    return Results.Json(errorResponse, statusCode: StatusCodes.Status500InternalServerError);
                 }
             })
         .WithName("Login")
@@ -147,7 +181,21 @@ public static class AuthenticationEndpoints
                 tokenEvent.Properties["FailureReason"] = "NoUsername";
                 tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
                 telemetryClient?.TrackEvent(tokenEvent);
-                return Results.Unauthorized();
+                
+                var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
+                    ?? Guid.NewGuid().ToString();
+                    
+                var errorResponse = new ErrorResponse
+                {
+                    Error = "UNAUTHORIZED",
+                    Message = "User authentication required",
+                    StatusCode = 401,
+                    CorrelationId = correlationId,
+                    Timestamp = DateTime.UtcNow,
+                    SuggestedAction = "Please login to obtain an access token"
+                };
+                
+                return Results.Json(errorResponse, statusCode: StatusCodes.Status401Unauthorized);
             }
 
             var token = await tokenService.GenerateToken(username: username);
@@ -171,7 +219,22 @@ public static class AuthenticationEndpoints
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
             telemetryClient?.TrackEvent(tokenEvent);
             telemetryClient?.TrackException(ex);
-            throw;
+            
+            var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
+                ?? Guid.NewGuid().ToString();
+                
+            var errorResponse = new ErrorResponse
+            {
+                Error = "TOKEN_GENERATION_ERROR",
+                Message = "Failed to generate authentication token",
+                Details = ex.Message,
+                StatusCode = 500,
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                SuggestedAction = "Please try again or contact support if the issue persists"
+            };
+            
+            return Results.Json(errorResponse, statusCode: StatusCodes.Status500InternalServerError);
         }
     }
 

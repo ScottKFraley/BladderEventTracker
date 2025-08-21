@@ -410,6 +410,10 @@ try
 
     Log.Information("Tracker endpoints mapped successfully.");
 
+    Log.Information("Mapping debug endpoints...");
+    app.MapDebugEndpoints();
+    Log.Information("Debug endpoints mapped successfully.");
+
     await app.RunAsync();
 }
 catch (Exception ex)
