@@ -127,7 +127,9 @@ public class AuthenticationEndpointsTests
         var result = await AuthenticationEndpoints.GenerateToken(httpContext, mockTokenService.Object, null!);
 
         // Assert
-        Assert.IsType<UnauthorizedHttpResult>(result);
+        var jsonResult = Assert.IsType<JsonHttpResult<ErrorResponse>>(result);
+        Assert.Equal(401, jsonResult.StatusCode);
+        Assert.Equal("UNAUTHORIZED", jsonResult.Value?.Error);
         mockTokenService.Verify(ts => ts.GenerateToken(It.IsAny<User>(), It.IsAny<string>(), false), Times.Never);
     }
 

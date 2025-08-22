@@ -1,3 +1,5 @@
+# NOTE: This read me is definitely in need of an update. 8/21/25
+
 # Bladder Tracker Application
 
 A comprehensive tracking application for monitoring bladder health metrics. This application helps users log and visualize bladder-related events, track patterns, and monitor health improvements over time.

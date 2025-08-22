@@ -42,18 +42,25 @@ public static class RefreshTokenEndpoints
                     return Results.Unauthorized();
                 }
 
-                // Find the refresh token in database
+                // Find the refresh token and user data in single optimized query
                 var dbLookupStopwatch = Stopwatch.StartNew();
-                var storedToken = await context.RefreshTokens
-                    .Include(rt => rt.User)
-                    .FirstOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
+                var tokenData = await context.RefreshTokens
+                    .Where(rt => rt.Token == refreshToken && !rt.IsRevoked)
+                    .Select(rt => new {
+                        rt.Id,
+                        rt.UserId,
+                        rt.ExpiresAt,
+                        rt.Token,
+                        UserUsername = rt.User!.Username
+                    })
+                    .FirstOrDefaultAsync();
                 dbLookupStopwatch.Stop();
 
-                if (storedToken == null || storedToken.ExpiresAt <= DateTimeOffset.UtcNow)
+                if (tokenData == null || tokenData.ExpiresAt <= DateTimeOffset.UtcNow)
                 {
                     stopwatch.Stop();
                     refreshEvent.Properties["Success"] = "false";
-                    refreshEvent.Properties["FailureReason"] = storedToken == null ? "TokenNotFound" : "TokenExpired";
+                    refreshEvent.Properties["FailureReason"] = tokenData == null ? "TokenNotFound" : "TokenExpired";
                     refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
                     refreshEvent.Metrics["DatabaseLookupDuration"] = dbLookupStopwatch.ElapsedMilliseconds;
                     telemetryClient.TrackEvent(refreshEvent);
@@ -62,25 +69,20 @@ public static class RefreshTokenEndpoints
                     return Results.Unauthorized();
                 }
 
-                refreshEvent.Properties["UserId"] = storedToken.UserId.ToString();
-                logger.LogInformation("Valid refresh token found for user: {UserId}", storedToken.UserId);
+                refreshEvent.Properties["Username"] = tokenData.UserUsername;
+                logger.LogInformation("Valid refresh token found for user: {Username}", tokenData.UserUsername);
 
-                // Generate new access token
-                var accessTokenStopwatch = Stopwatch.StartNew();
-                var newAccessToken = await tokenService.GenerateToken(user: storedToken.User);
-                accessTokenStopwatch.Stop();
-
-                // Generate new refresh token
-                var newRefreshTokenStopwatch = Stopwatch.StartNew();
-                var newRefreshToken = await tokenService.GenerateRefreshTokenAsync(
-                    storedToken.UserId, 
+                // Generate new tokens and perform refresh token rotation in single transaction
+                var tokenOperationStopwatch = Stopwatch.StartNew();
+                var newAccessToken = await tokenService.GenerateTokenFromUserData(
+                    tokenData.UserId, 
+                    tokenData.UserUsername);
+                
+                var newRefreshToken = await tokenService.RotateRefreshTokenAsync(
+                    tokenData.Id,
+                    tokenData.UserId, 
                     httpContext.Request.Headers.UserAgent.ToString());
-                newRefreshTokenStopwatch.Stop();
-
-                // Revoke old refresh token
-                var revokeStopwatch = Stopwatch.StartNew();
-                await tokenService.RevokeRefreshTokenAsync(refreshToken);
-                revokeStopwatch.Stop();
+                tokenOperationStopwatch.Stop();
 
                 // Set new refresh token as httpOnly cookie
                 var cookieOptions = new CookieOptions
@@ -94,17 +96,17 @@ public static class RefreshTokenEndpoints
 
                 stopwatch.Stop();
                 refreshEvent.Properties["Success"] = "true";
+                refreshEvent.Properties["Username"] = tokenData.UserUsername;
                 refreshEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
                 refreshEvent.Metrics["DatabaseLookupDuration"] = dbLookupStopwatch.ElapsedMilliseconds;
-                refreshEvent.Metrics["AccessTokenGenerationDuration"] = accessTokenStopwatch.ElapsedMilliseconds;
-                refreshEvent.Metrics["RefreshTokenGenerationDuration"] = newRefreshTokenStopwatch.ElapsedMilliseconds;
-                refreshEvent.Metrics["TokenRevokeDuration"] = revokeStopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["TokenOperationDuration"] = tokenOperationStopwatch.ElapsedMilliseconds;
+                refreshEvent.Metrics["DatabaseOperations"] = 2; // 1 SELECT + 1 Transaction (INSERT + UPDATE)
                 telemetryClient.TrackEvent(refreshEvent);
 
                 telemetryClient.TrackMetric("Authentication.TokenRefresh.Success", 1,
-                    new Dictionary<string, string> { ["UserId"] = storedToken.UserId.ToString() });
+                    new Dictionary<string, string> { ["Username"] = tokenData.UserUsername });
 
-                logger.LogInformation("Successfully refreshed tokens for user: {UserId}", storedToken.UserId);
+                logger.LogInformation("Successfully refreshed tokens for user: {Username} (Optimized: 2 DB operations)", tokenData.UserUsername);
 
                 return Results.Ok(new { Token = newAccessToken });
             }
