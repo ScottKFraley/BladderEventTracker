@@ -55,7 +55,7 @@ export class DebugInfoService {
 
       return {
         username,
-        isAuthenticated: this.authService.isAuthenticated(),
+        isAuthenticated: !!this.authService.getToken(), // Use token presence as sync auth check
         tokenExpiration,
         userId,
         roles
@@ -77,7 +77,7 @@ export class DebugInfoService {
       const hasRefreshToken = !!localStorage.getItem('refresh_token');
       
       // Get auth error history from error service
-      const errorHistory = this.errorService.errorHistorySubject.value;
+      const errorHistory = this.errorService.getCurrentErrorHistory();
       const authErrors = errorHistory.errors.filter(error => 
         error.statusCode === 401 || error.statusCode === 403 || 
         (error as any).authenticationState !== undefined

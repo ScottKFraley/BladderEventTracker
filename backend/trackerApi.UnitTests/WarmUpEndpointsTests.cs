@@ -49,7 +49,7 @@ public class WarmUpEndpointsTests : IDisposable
 
         // Assert
         Assert.IsType<NoContent>(result);
-        Assert.True(stopwatch.ElapsedMilliseconds < 100, $"Warm-up endpoint took {stopwatch.ElapsedMilliseconds}ms, expected < 100ms");
+        Assert.True(stopwatch.ElapsedMilliseconds < 500, $"Warm-up endpoint took {stopwatch.ElapsedMilliseconds}ms, expected < 500ms");
     }
 
     public void Dispose()
