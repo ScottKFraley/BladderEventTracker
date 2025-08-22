@@ -116,6 +116,7 @@ public class TokenService : ITokenService
 
     /// <summary>
     /// Optimized refresh token rotation: INSERT new + UPDATE old in single transaction
+    /// Uses EF Core execution strategy pattern for Azure SQL Database compatibility
     /// </summary>
     public async Task<string> RotateRefreshTokenAsync(Guid oldTokenId, Guid userId, string? deviceInfo = null)
     {
@@ -157,9 +158,9 @@ public class TokenService : ITokenService
         }
         else
         {
-            // Use transaction for real databases
-            using var transaction = await _dbContext.Database.BeginTransactionAsync();
-            try
+            // Use EF Core execution strategy for Azure SQL Database compatibility
+            var strategy = _dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
                 // Create new refresh token entity
                 var refreshTokenEntity = new RefreshToken
@@ -180,17 +181,11 @@ public class TokenService : ITokenService
                     .Where(rt => rt.Id == oldTokenId)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(rt => rt.IsRevoked, true));
 
-                // Commit both operations
+                // Commit both operations as atomic unit
                 await _dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
 
                 return newRefreshToken;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
     }
 
