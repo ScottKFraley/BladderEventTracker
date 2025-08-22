@@ -389,6 +389,10 @@ export class EnhancedErrorService {
     return this.errorHistory$;
   }
 
+  getCurrentErrorHistory(): ErrorHistory {
+    return this.errorHistorySubject.value;
+  }
+
   getErrorPatterns(): Observable<ErrorPatternAlert[]> {
     return this.errorPatterns$;
   }

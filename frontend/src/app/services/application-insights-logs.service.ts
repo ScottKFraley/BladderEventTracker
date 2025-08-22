@@ -398,9 +398,13 @@ export class ApplicationInsightsLogsService {
    * Get configuration status for debugging
    */
   getConfigurationStatus(): { configured: boolean; appId: string; hasApiKey: boolean } {
+    const appIdDisplay = this.appId === 'your-app-insights-app-id' 
+      ? '[NOT CONFIGURED]' 
+      : `${String(this.appId).substring(0, 8)}...`;
+    
     return {
       configured: this.isConfigured(),
-      appId: this.appId === 'your-app-insights-app-id' ? '[NOT CONFIGURED]' : `${this.appId.substring(0, 8)}...`,
+      appId: appIdDisplay,
       hasApiKey: this.apiKey !== 'your-app-insights-api-key' && !!this.apiKey
     };
   }
