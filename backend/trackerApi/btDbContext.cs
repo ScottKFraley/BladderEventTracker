@@ -92,6 +92,11 @@ public class AppDbContext : DbContext
                 .HasMaxLength(50)
                 .IsRequired();
 
+            // Index for username lookups
+            entity.HasIndex(e => e.Username)
+                .HasDatabaseName("IX_Users_Username")
+                .IsUnique();
+
             // Configure PasswordHash
             entity.Property(e => e.PasswordHash)
                 .HasColumnType("nvarchar(max)")
@@ -150,6 +155,11 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(e => e.ExpiresAt)
                 .HasDatabaseName("IX_RefreshTokens_ExpiresAt");
+
+            // Composite index for the most common refresh token query
+            entity.HasIndex(e => new { e.Token, e.IsRevoked })
+                .HasDatabaseName("IX_RefreshTokens_Token_IsRevoked")
+                .HasFilter("IsRevoked = 0"); // Filtered index for active tokens only
         });
     }
 

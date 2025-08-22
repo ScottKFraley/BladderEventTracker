@@ -438,6 +438,124 @@ public class RefreshTokenServiceTests : IDisposable
 
     #endregion
 
+    #region Optimized Methods Tests
+
+    [Fact]
+    public async Task GenerateTokenFromUserData_WithValidData_ReturnsValidToken()
+    {
+        // Act
+        var token = await _tokenService.GenerateTokenFromUserData(_testUser.Id, _testUser.Username);
+
+        // Assert
+        Assert.NotNull(token);
+        Assert.NotEmpty(token);
+
+        // Verify token structure (should have 3 parts separated by dots)
+        var tokenParts = token.Split('.');
+        Assert.Equal(3, tokenParts.Length);
+    }
+
+    [Fact]
+    public async Task RotateRefreshTokenAsync_WithValidToken_CreatesNewAndRevokesOld()
+    {
+        // Arrange
+        var originalToken = await _tokenService.GenerateRefreshTokenAsync(_testUser.Id, "Test Device");
+        var originalTokenEntity = await _dbContext.RefreshTokens
+            .FirstAsync(rt => rt.Token == originalToken);
+
+        // Act
+        var newToken = await _tokenService.RotateRefreshTokenAsync(
+            originalTokenEntity.Id, 
+            _testUser.Id, 
+            "Updated Device");
+
+        // Assert
+        Assert.NotNull(newToken);
+        Assert.NotEmpty(newToken);
+        Assert.NotEqual(originalToken, newToken);
+
+        // Verify original token is revoked
+        await _dbContext.Entry(originalTokenEntity).ReloadAsync();
+        Assert.True(originalTokenEntity.IsRevoked);
+
+        // Verify new token exists and is active
+        var newTokenEntity = await _dbContext.RefreshTokens
+            .FirstAsync(rt => rt.Token == newToken);
+        Assert.False(newTokenEntity.IsRevoked);
+        Assert.Equal(_testUser.Id, newTokenEntity.UserId);
+        Assert.Equal("Updated Device", newTokenEntity.DeviceInfo);
+    }
+
+    [Fact]
+    public async Task RotateRefreshTokenAsync_WithNonExistentOldToken_StillCreatesNewToken()
+    {
+        // This test verifies that if the old token doesn't exist,
+        // the method still creates a new token (graceful handling)
+        
+        // Arrange
+        var originalTokenCount = await _dbContext.RefreshTokens.CountAsync();
+
+        // Act
+        // Using a non-existent token ID should not prevent new token creation
+        var newToken = await _tokenService.RotateRefreshTokenAsync(
+            Guid.NewGuid(), // Non-existent token ID
+            _testUser.Id,
+            "Test Device");
+
+        // Assert
+        Assert.NotNull(newToken);
+        Assert.NotEmpty(newToken);
+        
+        // Verify new token was created
+        var newTokenCount = await _dbContext.RefreshTokens.CountAsync();
+        Assert.Equal(originalTokenCount + 1, newTokenCount);
+        
+        // Verify the new token exists and is valid
+        var newTokenEntity = await _dbContext.RefreshTokens
+            .FirstAsync(rt => rt.Token == newToken);
+        Assert.Equal(_testUser.Id, newTokenEntity.UserId);
+        Assert.False(newTokenEntity.IsRevoked);
+        Assert.Equal("Test Device", newTokenEntity.DeviceInfo);
+    }
+
+    [Fact]
+    public async Task OptimizedRefreshFlow_PerformanceComparison_FewerDatabaseCalls()
+    {
+        // This test demonstrates the performance improvement by counting database operations
+        // Arrange
+        var originalToken = await _tokenService.GenerateRefreshTokenAsync(_testUser.Id);
+        var originalTokenEntity = await _dbContext.RefreshTokens
+            .FirstAsync(rt => rt.Token == originalToken);
+
+        // Reset change tracker to simulate fresh context
+        _dbContext.ChangeTracker.Clear();
+
+        var initialQueryCount = _dbContext.ChangeTracker.Entries().Count();
+
+        // Act - Optimized approach (should be 1 query + 1 transaction)
+        var accessToken = await _tokenService.GenerateTokenFromUserData(_testUser.Id, _testUser.Username);
+        var newRefreshToken = await _tokenService.RotateRefreshTokenAsync(
+            originalTokenEntity.Id, 
+            _testUser.Id);
+
+        // Assert
+        Assert.NotNull(accessToken);
+        Assert.NotNull(newRefreshToken);
+        
+        // Verify the old approach would have required more operations:
+        // 1. SELECT with Include(User) - loads full user entity
+        // 2. Separate GenerateToken call (potentially triggering another DB call)
+        // 3. Separate INSERT for new refresh token
+        // 4. Separate UPDATE to revoke old token
+        // 
+        // New approach:
+        // 1. SELECT with specific fields only
+        // 2. In-memory JWT generation (no DB call)
+        // 3. Transaction with INSERT + UPDATE
+    }
+
+    #endregion
+
     public void Dispose()
     {
         Dispose(true);

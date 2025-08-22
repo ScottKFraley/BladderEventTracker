@@ -199,11 +199,15 @@ Based on the provided context, focus areas include:
 5. **Security Awareness**: Consider health data privacy in all decisions
 
 ### Command Execution Format
+**IMPORTANT: Windows Development Environment**
+This project is developed on Windows. Provide all commands as copy/paste text for Windows Command Prompt/PowerShell, NOT as bash tool executions.
+
 - **File Operations**: `code <filename>` for file creation
-- **Git Operations**: Complete git commands with messages
-- **Docker Commands**: Use `docker compose` (v2 syntax)
-- **Angular Commands**: From `frontend/` directory
+- **Git Operations**: Complete git commands with messages: `git commit -m "message"` (standard format, not heredoc)
+- **Docker Commands**: Use `docker compose` (v2 syntax without hyphen)
+- **Angular Commands**: From `frontend/` directory with `ng test ...`
 - **DotNet Commands**: From `backend/` directory
+- **All Commands**: Provide as Windows-compatible copy/paste text, not bash tool execution
 
 ### Error Handling Approach
 When issues arise:

@@ -46,6 +46,8 @@ public static class DebugEndpoints
         HttpContext context,
         ILogger<Program> logger)
     {
+        await Task.Delay(10);   // quiet the compiler for now.
+
         try
         {
             var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
@@ -198,6 +200,8 @@ public static class DebugEndpoints
         HttpContext context,
         ILogger<Program> logger)
     {
+        await Task.Delay(10);   // quiet the compiler for now.
+
         try
         {
             logger.LogInformation("Log retrieval requested for correlation ID: {CorrelationId}", correlationId);

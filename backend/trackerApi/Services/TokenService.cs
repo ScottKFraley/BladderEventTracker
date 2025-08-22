@@ -35,6 +35,9 @@ public class TokenService : ITokenService
         _dbContext = dbContext;
     }
 
+    /// <summary>
+    /// Generates JWT token using User entity (for login scenarios)
+    /// </summary>
     public async Task<string> GenerateToken(User? user = null, string? username = null, bool isRefreshToken = false)
     {
         GetSigningCredentials(_configuration, out IConfigurationSection jwtSettings, out SigningCredentials credentials);
@@ -78,6 +81,117 @@ public class TokenService : ITokenService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
+    /// Optimized JWT generation for refresh scenarios - no additional DB calls
+    /// </summary>
+    public Task<string> GenerateTokenFromUserData(Guid userId, string username)
+    {
+        GetSigningCredentials(_configuration, out IConfigurationSection jwtSettings, out SigningCredentials credentials);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Name, username),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat,
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64)
+        };
+
+        var expirationMinutes = double.Parse(
+            jwtSettings["ExpirationInMinutes"] ?? "60");
+
+        var token = new JwtSecurityToken(
+            issuer: jwtSettings["Issuer"],
+            audience: jwtSettings["Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
+            signingCredentials: credentials
+        );
+
+        return Task.FromResult(new JwtSecurityTokenHandler().WriteToken(token));
+    }
+
+    /// <summary>
+    /// Optimized refresh token rotation: INSERT new + UPDATE old in single transaction
+    /// </summary>
+    public async Task<string> RotateRefreshTokenAsync(Guid oldTokenId, Guid userId, string? deviceInfo = null)
+    {
+        // Generate a cryptographically secure random token
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var newRefreshToken = Convert.ToBase64String(randomBytes);
+
+        // Use transaction to ensure atomicity (if supported by provider)
+        var isInMemoryDatabase = _dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+        
+        if (isInMemoryDatabase)
+        {
+            // In-memory database doesn't support transactions, do operations sequentially
+            // Create new refresh token entity
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = userId,
+                Token = newRefreshToken,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(30), // 30 days expiration
+                CreatedAt = DateTimeOffset.UtcNow,
+                DeviceInfo = deviceInfo,
+                IsRevoked = false
+            };
+
+            // INSERT new token
+            _dbContext.RefreshTokens.Add(refreshTokenEntity);
+            
+            // UPDATE old token to revoked
+            var oldToken = await _dbContext.RefreshTokens.FindAsync(oldTokenId);
+            if (oldToken != null)
+            {
+                oldToken.IsRevoked = true;
+            }
+
+            await _dbContext.SaveChangesAsync();
+            return newRefreshToken;
+        }
+        else
+        {
+            // Use transaction for real databases
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                // Create new refresh token entity
+                var refreshTokenEntity = new RefreshToken
+                {
+                    UserId = userId,
+                    Token = newRefreshToken,
+                    ExpiresAt = DateTimeOffset.UtcNow.AddDays(30), // 30 days expiration
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    DeviceInfo = deviceInfo,
+                    IsRevoked = false
+                };
+
+                // INSERT new token
+                _dbContext.RefreshTokens.Add(refreshTokenEntity);
+                
+                // UPDATE old token to revoked (more efficient than separate query)
+                await _dbContext.RefreshTokens
+                    .Where(rt => rt.Id == oldTokenId)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(rt => rt.IsRevoked, true));
+
+                // Commit both operations
+                await _dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return newRefreshToken;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
 
     public async Task<string> GenerateRefreshTokenAsync(Guid userId, string? deviceInfo = null)

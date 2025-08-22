@@ -109,7 +109,7 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2024-05-01-preview' = {
   properties: {
     collation: 'SQL_Latin1_General_CP1_CI_AS'
     maxSizeBytes: 34359738368 // 32GB
-    autoPauseDelay: 60
+    autoPauseDelay: 360
     minCapacity: json('0.5')
     useFreeLimit: true
     freeLimitExhaustionBehavior: 'BillOverUsage'
