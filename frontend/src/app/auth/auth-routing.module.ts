@@ -8,7 +8,7 @@ import { DebugComponent } from '../debug/debug.component';
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'warmup', component: WarmUpComponent },
-  { path: '/debug', component: DebugComponent }
+  { path: 'debug', component: DebugComponent }
   // { path: 'register', component: RegisterComponent }
 ];
 

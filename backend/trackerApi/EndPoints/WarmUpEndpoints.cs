@@ -36,6 +36,9 @@ public static class WarmUpEndpoints
             }
             else
             {
+                // Set a timeout of 150 seconds / 2.5 minutes
+                dbContext.Database.SetCommandTimeout(150);
+
                 // For real databases, use raw SQL to wake up Azure SQL
                 await dbContext.Database.ExecuteSqlRawAsync("SELECT 1");
             }
@@ -47,17 +50,4 @@ public static class WarmUpEndpoints
             return TypedResults.Problem($"Error processing warm-up request: {ex.Message}");
         }
     }
-
-    //internal static IResult HandleWarmUp()
-    //{
-    //    try
-    //    {
-
-    //        return TypedResults.NoContent(); // 204 No Content
-    //    }
-    //    catch (Exception)
-    //    {
-    //        return TypedResults.Problem("Error processing warm-up request");
-    //    }
-    //}
 }
