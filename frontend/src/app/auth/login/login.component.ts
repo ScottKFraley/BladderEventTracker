@@ -75,7 +75,7 @@ export class LoginComponent implements OnDestroy {
           this.clearLoadingTimer();
           this.router.navigate(['/dashboard']); // or your desired route
         },
-        error: (error: string) => {
+        error: (error: any) => {
           console.error('Login error in component:', {
             error: error,
             formValue: this.loginForm.value.username, // Don't log password
@@ -83,11 +83,17 @@ export class LoginComponent implements OnDestroy {
             timestamp: new Date().toISOString()
           });
           
+          // Handle both string and object errors
+          let errorMessage = typeof error === 'string' ? error : 
+                            error?.message || 
+                            error?.error?.message || 
+                            'Login failed. Please try again.';
+          
           // Enhanced error messaging for timeouts
-          if (error.includes('timed out') || error.includes('timeout')) {
+          if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
             this.errorMessage = 'Login is taking longer than usual. This may be due to database initialization on Azure. Please try again in a moment.';
           } else {
-            this.errorMessage = error;
+            this.errorMessage = errorMessage;
           }
           
           this.clearLoadingTimer();

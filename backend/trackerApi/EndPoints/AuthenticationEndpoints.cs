@@ -87,14 +87,24 @@ public static class AuthenticationEndpoints
                     refreshTokenStopwatch.Stop();
 
                     // Set refresh token as httpOnly cookie
-                    var cookieOptions = new CookieOptions
+                    var refreshCookieOptions = new CookieOptions
                     {
                         HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.Strict,
                         Expires = DateTimeOffset.Now.AddDays(30) // 30 day expiry
                     };
-                    httpContext.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+                    httpContext.Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
+
+                    // Set access token as httpOnly cookie (30 days to match JWT)
+                    var accessCookieOptions = new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.Now.AddDays(30) // Match JWT expiration
+                    };
+                    httpContext.Response.Cookies.Append("accessToken", token, accessCookieOptions);
 
                     stopwatch.Stop();
                     loginEvent.Properties["Success"] = "true";
