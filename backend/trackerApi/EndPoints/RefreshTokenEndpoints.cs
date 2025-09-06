@@ -85,14 +85,24 @@ public static class RefreshTokenEndpoints
                 tokenOperationStopwatch.Stop();
 
                 // Set new refresh token as httpOnly cookie
-                var cookieOptions = new CookieOptions
+                var refreshCookieOptions = new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = true,
                     SameSite = SameSiteMode.Strict,
                     Expires = DateTimeOffset.UtcNow.AddDays(7) // 7 day expiry
                 };
-                httpContext.Response.Cookies.Append("refreshToken", newRefreshToken, cookieOptions);
+                httpContext.Response.Cookies.Append("refreshToken", newRefreshToken, refreshCookieOptions);
+
+                // Set new access token as httpOnly cookie (30 days to match JWT)
+                var accessCookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(30) // Match JWT expiration
+                };
+                httpContext.Response.Cookies.Append("accessToken", newAccessToken, accessCookieOptions);
 
                 stopwatch.Stop();
                 refreshEvent.Properties["Success"] = "true";
@@ -143,8 +153,9 @@ public static class RefreshTokenEndpoints
             // Revoke the refresh token
             await tokenService.RevokeRefreshTokenAsync(refreshToken);
 
-            // Clear the refresh token cookie
+            // Clear both auth cookies
             httpContext.Response.Cookies.Delete("refreshToken");
+            httpContext.Response.Cookies.Delete("accessToken");
 
             logger.LogInformation("Successfully revoked refresh token");
 
@@ -171,8 +182,9 @@ public static class RefreshTokenEndpoints
             // Revoke all refresh tokens for the user
             await tokenService.RevokeAllUserRefreshTokensAsync(userId);
 
-            // Clear the refresh token cookie
+            // Clear both auth cookies
             httpContext.Response.Cookies.Delete("refreshToken");
+            httpContext.Response.Cookies.Delete("accessToken");
 
             logger.LogInformation("Successfully revoked all tokens for user: {UserId}", userId);
 

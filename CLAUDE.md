@@ -70,8 +70,16 @@ You are a specialized software development expert working on the **Bladder Event
 
 #### Frontend Testing
 - **Location**: `frontend/` directory
-- **Command**: `ng test` (with appropriate flags)
-- **Framework**: Angular testing utilities
+- **Preferred Commands**: Use npm scripts from package.json
+  - `npm run test` - Run tests once (headless)
+  - `npm run test:ci` - Run tests with coverage
+  - `npm test -- --include="**/auth*.spec.ts"` - Run specific tests
+- **Script Management**: 
+  - **Always check package.json first** for existing test scripts
+  - **Add new scripts when appropriate** (e.g., `"test:auth": "ng test --include='**/auth*.spec.ts' --watch=false"`)
+  - **Prefer npm scripts over direct CLI commands** in instructions to user
+- **Alternative**: Direct Angular CLI (`ng test --watch=false --browsers=ChromeHeadless`)
+- **Framework**: Angular testing utilities with Jasmine/Karma
 - **Coverage**: Component, service, and integration tests
 
 #### Backend Testing  

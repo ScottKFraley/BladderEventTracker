@@ -22,8 +22,6 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly TOKEN_KEY = 'auth_token';
-  private readonly TOKEN_EXPIRY_KEY = 'auth_token_expiry';
   private readonly AUTH_TIMEOUT = 120000; // 2 minutes for Azure SQL cold start
   private readonly TOKEN_REFRESH_TIMEOUT = 60000; // 1 minute for token refresh
 
@@ -31,6 +29,7 @@ export class AuthService {
   private tokenExpiryTimer: any;
   private refreshTimer: any;
   private subscriptions = new Subscription();
+  private currentTokenExp: number | null = null; // Cache token expiry from cookie
 
 
   constructor(
@@ -95,18 +94,14 @@ export class AuthService {
 
     this.appInsights.clearAuthenticatedUser();
     
-    // Mobile compatibility: Safe localStorage cleanup
-    try {
-      if (typeof localStorage !== 'undefined' && localStorage !== null) {
-        localStorage.removeItem(this.TOKEN_KEY);
-        localStorage.removeItem(this.TOKEN_EXPIRY_KEY);
-      }
-    } catch (error) {
-      console.error('Error clearing localStorage on mobile device:', error);
-    }
-    
+    // Clear all cached auth data and timers
+    this.currentTokenExp = null;
+    this.currentUserId = null;
     this.isAuthenticatedSubject.next(false);
     clearTimeout(this.tokenExpiryTimer);
+    this.stopRefreshTimer();
+    
+    // Note: HTTP cookies will be cleared by the backend when calling revoke endpoint
     this.router.navigate(['/login']);
   }
 
@@ -115,18 +110,10 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    // Mobile compatibility: Add localStorage safety check
-    try {
-      if (typeof localStorage !== 'undefined' && localStorage !== null) {
-        return localStorage.getItem(this.TOKEN_KEY);
-      } else {
-        console.warn('localStorage not available on this mobile device');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error accessing localStorage on mobile device:', error);
-      return null;
-    }
+    // With HTTP cookies, we can't directly access the token from JavaScript
+    // The token will be automatically included in requests via withCredentials: true
+    // For UI purposes, we rely on the authentication state
+    return this.isAuthenticatedSubject.value ? 'cookie-based-token' : null;
   }
 
   refreshToken(): Observable<any> {
@@ -184,19 +171,27 @@ export class AuthService {
 
   private handleSuccessfulAuth(response: AuthResponse): void {
     if (response.token) {
-      // Mobile compatibility: Safe localStorage access
+      // Extract token expiry and user ID from JWT payload
       try {
-        if (typeof localStorage !== 'undefined' && localStorage !== null) {
-          localStorage.setItem(this.TOKEN_KEY, response.token);
-
-          // Set token expiry (example: 1 hour from now)
-          const expiry = new Date().getTime() + (60 * 60 * 1000);
-          localStorage.setItem(this.TOKEN_EXPIRY_KEY, expiry.toString());
-        } else {
-          console.warn('localStorage not available on this mobile device - token not persisted');
-        }
+        const payload = JSON.parse(atob(response.token.split('.')[1]));
+        this.currentTokenExp = payload.exp * 1000; // Convert to milliseconds
+        
+        // Extract user ID from JWT claims
+        this.currentUserId = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+                           payload.nameidentifier ||
+                           payload.id ||
+                           payload.sub ||
+                           null;
+        
+        console.log('Token data extracted from JWT:', {
+          expiry: new Date(this.currentTokenExp).toISOString(),
+          userId: this.currentUserId
+        });
       } catch (error) {
-        console.error('Error saving token to localStorage on mobile device:', error);
+        console.error('Error decoding JWT token:', error);
+        // Fallback to 1 hour from now if we can't decode the token
+        this.currentTokenExp = new Date().getTime() + (60 * 60 * 1000);
+        this.currentUserId = null;
       }
 
       this.isAuthenticatedSubject.next(true);
@@ -205,31 +200,9 @@ export class AuthService {
   }
 
   private checkAuthStatus(): void {
-    const token = this.getToken();
-    let expiry: string | null = null;
-    
-    // Mobile compatibility: Safe localStorage access for expiry
-    try {
-      if (typeof localStorage !== 'undefined' && localStorage !== null) {
-        expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
-      }
-    } catch (error) {
-      console.error('Error accessing token expiry from localStorage on mobile device:', error);
-    }
-
-    if (token && expiry) {
-      const expiryTime = parseInt(expiry, 10);
-      const now = new Date().getTime();
-
-      if (now < expiryTime) {
-        this.isAuthenticatedSubject.next(true);
-        this.setupTokenExpiryTimer();
-      } else {
-        this.attemptRefreshTokenLogin();
-      }
-    } else {
-      this.attemptRefreshTokenLogin();
-    }
+    // With HTTP cookies, we can't directly check token validity
+    // Instead, we attempt to refresh the token to verify authentication
+    this.attemptRefreshTokenLogin();
   }
 
   private attemptRefreshTokenLogin(): void {
@@ -247,32 +220,28 @@ export class AuthService {
   }
 
   private setupTokenExpiryTimer(): void {
-    let expiry: string | null = null;
-    
-    // Mobile compatibility: Safe localStorage access
-    try {
-      if (typeof localStorage !== 'undefined' && localStorage !== null) {
-        expiry = localStorage.getItem(this.TOKEN_EXPIRY_KEY);
-      }
-    } catch (error) {
-      console.error('Error accessing token expiry from localStorage for timer setup:', error);
-      return; // Exit early if localStorage isn't accessible
-    }
-    if (expiry) {
-      const expiryTime = parseInt(expiry, 10);
+    if (this.currentTokenExp) {
       const now = new Date().getTime();
-      const timeUntilExpiry = expiryTime - now;
+      const timeUntilExpiry = this.currentTokenExp - now;
+      const daysUntilExpiry = Math.round(timeUntilExpiry / (1000 * 60 * 60 * 24));
+
+      console.log('Token expiry info:', {
+        currentTime: new Date(now).toISOString(),
+        tokenExpiry: new Date(this.currentTokenExp).toISOString(),
+        daysUntilExpiry: daysUntilExpiry
+      });
 
       // Clear any existing timers
       this.stopRefreshTimer();
 
-      // Calculate refresh time using injected threshold
-      const timeUntilRefresh = timeUntilExpiry - this.tokenRefreshThreshold;
-
-      if (timeUntilRefresh > 0) {
+      // For 30-day tokens, only set up refresh timer if token expires within 1 day
+      if (timeUntilExpiry > 0 && timeUntilExpiry < (24 * 60 * 60 * 1000)) {
+        console.log('Token expires within 24 hours, setting up refresh timer');
         this.refreshTimer = setTimeout(() => {
           this.performAutomaticRefresh();
-        }, timeUntilRefresh);
+        }, timeUntilExpiry - this.tokenRefreshThreshold);
+      } else {
+        console.log('Token valid for', daysUntilExpiry, 'days - no refresh timer needed');
       }
     }
   }
@@ -306,6 +275,9 @@ export class AuthService {
     this.subscriptions.add(subscription);
   }
 
+  // Store user ID when authentication succeeds
+  private currentUserId: string | null = null;
+
   // Decode the JWT in order to have the UserId, which is needed in order 
   // to keep the data boxed in to just the user currently logged in!
   private decodeToken(token: string): any {
@@ -324,20 +296,7 @@ export class AuthService {
   }
 
   getCurrentUserId(): string | null {
-    const token = this.getToken();
-    if (!token) return null;
-
-    const decodedToken = this.decodeToken(token);
-    if (!decodedToken) return null;
-
-    console.log('All available claims:', Object.keys(decodedToken));
-    console.log('Full decoded token:', decodedToken);
-
-    // Check for both possible claim formats
-    return decodedToken?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
-      decodedToken?.nameidentifier ||
-      decodedToken?.id ||
-      null;
+    return this.currentUserId;
   }
 
   private handleError(error: HttpErrorResponse) {

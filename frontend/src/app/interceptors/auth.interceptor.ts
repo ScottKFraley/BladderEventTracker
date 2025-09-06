@@ -64,11 +64,9 @@ export const authInterceptor: HttpInterceptorFn = (
     );
   }
 
-  // Add Authorization header if token exists
-  const token = authService.getToken();
-  if (token) {
-    req = addToken(req, token);
-  }
+  // Note: No need to add Authorization header since we're using HTTP cookies
+  // The cookies will be automatically included with withCredentials: true
+  // Keep the token check for UI state purposes
 
   // Apply conditional timeout based on request type
   const timeoutMs = getTimeoutForRequest(req);
@@ -207,8 +205,8 @@ function handle401Error(
         refreshCount = 0; // Reset on successful refresh
         refreshTokenSubject.next(newToken);
         
-        // Retry the original request with new token
-        return next(addToken(request, newToken));
+        // Retry the original request (cookies will be automatically included)
+        return next(request);
       }),
       catchError((refreshError) => {
         console.error('Token refresh failed:', refreshError);
@@ -237,8 +235,8 @@ function handle401Error(
         if (!token) {
           return throwError(() => new Error('Token refresh failed'));
         }
-        // Retry the original request with the new token
-        return next(addToken(request, token));
+        // Retry the original request (cookies will be automatically included)
+        return next(request);
       }),
       catchError((error) => {
         // If waiting for refresh fails, also handle it gracefully

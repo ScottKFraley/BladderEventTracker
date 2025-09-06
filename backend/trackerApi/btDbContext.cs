@@ -3,7 +3,6 @@ namespace trackerApi.DbContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-
 using trackerApi.Models;
 using trackerApi.Services;
 
@@ -250,7 +249,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         {
             sqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
+                maxRetryDelay: TimeSpan.FromSeconds(60),
                 errorNumbersToAdd: [258, 2, 53, 121, 232, 20]);
         });
 
@@ -260,4 +259,3 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         return new AppDbContext(optionsBuilder.Options, logger);
     }
 }
-

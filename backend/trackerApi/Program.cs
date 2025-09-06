@@ -384,6 +384,24 @@ try
         await next();
     });
 
+    // Custom middleware to extract JWT from cookies
+    app.Use(async (context, next) =>
+    {
+        // If there's no Authorization header, check for accessToken cookie
+        if (!context.Request.Headers.ContainsKey("Authorization"))
+        {
+            if (context.Request.Cookies.TryGetValue("accessToken", out var accessToken) && 
+                !string.IsNullOrEmpty(accessToken))
+            {
+                context.Request.Headers.Authorization = $"Bearer {accessToken}";
+                Log.Information("JWT token extracted from cookie for request {Method} {Path}", 
+                    context.Request.Method, context.Request.Path);
+            }
+        }
+        
+        await next();
+    });
+
     app.UseAuthentication();
     app.UseAuthorization();
 
