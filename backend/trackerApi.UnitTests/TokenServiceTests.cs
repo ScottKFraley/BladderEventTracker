@@ -38,7 +38,7 @@ public class TokenServiceTests : IDisposable
             new KeyValuePair<string, string?>("JwtSettings:Issuer", "test-issuer"),
             new KeyValuePair<string, string?>("JwtSettings:Audience", "test-audience"),
             new KeyValuePair<string, string?>("JwtSettings:SecretKey", "your-test-secret-key-minimum-256-bits-long"),
-            new KeyValuePair<string, string?>("JwtSettings:ExpirationInMinutes", "60")
+            new KeyValuePair<string, string?>("JwtSettings:ExpirationInMinutes", "43200")
         };
 
         _configuration = new ConfigurationBuilder()
@@ -140,7 +140,7 @@ public class TokenServiceTests : IDisposable
     }
 
     [Fact, Trait("Category", "Unit")]
-    public async Task GenerateToken_ValidatesExpiration()
+    public async Task GenerateToken_ValidatesExpiration_30Days()
     {
         // Arrange
         var customConfigData = new[]
@@ -148,7 +148,7 @@ public class TokenServiceTests : IDisposable
             new KeyValuePair<string, string?>("JwtSettings:Issuer", "test-issuer"),
             new KeyValuePair<string, string?>("JwtSettings:Audience", "test-audience"),
             new KeyValuePair<string, string?>("JwtSettings:SecretKey", "your-test-secret-key-minimum-256-bits-long"),
-            new KeyValuePair<string, string?>("JwtSettings:ExpirationInMinutes", "30")
+            new KeyValuePair<string, string?>("JwtSettings:ExpirationInMinutes", "43200") // 30 days
         };
 
         var customConfig = new ConfigurationBuilder()
@@ -163,8 +163,22 @@ public class TokenServiceTests : IDisposable
         var jwtToken = handler.ReadJwtToken(token);
 
         // Assert
-        var expectedExpiration = DateTime.UtcNow.AddMinutes(30);
-        Assert.True(Math.Abs((expectedExpiration - jwtToken.ValidTo).TotalMinutes) < 1);
+        var expectedExpiration = DateTime.UtcNow.AddDays(30);
+        Assert.True(Math.Abs((expectedExpiration - jwtToken.ValidTo).TotalHours) < 1);
+    }
+
+    [Fact, Trait("Category", "Unit")]
+    public async Task GenerateToken_ValidatesDefaultExpiration_30Days()
+    {
+        // Act
+        var token = await _tokenService.GenerateToken(user: _testUser);
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+
+        // Assert - Should be approximately 30 days from now
+        var expectedExpiration = DateTime.UtcNow.AddDays(30);
+        var timeDifference = Math.Abs((expectedExpiration - jwtToken.ValidTo).TotalHours);
+        Assert.True(timeDifference < 1, $"Token expiry should be ~30 days from now. Expected: {expectedExpiration}, Actual: {jwtToken.ValidTo}, Difference: {timeDifference} hours");
     }
 
     [Fact, Trait("Category", "Unit")]

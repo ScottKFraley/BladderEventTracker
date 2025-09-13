@@ -64,7 +64,7 @@ describe('AuthService', () => {
         router = TestBed.inject(Router);
         apiEndpoints = TestBed.inject(ApiEndpointsService);
 
-        // Clear localStorage before each test
+        // Clear localStorage before each test (still needed for some tests)
         localStorage.clear();
     });
 
@@ -89,16 +89,24 @@ describe('AuthService', () => {
             token: 'mock-jwt-token'
         };
 
-        it('should store token and update auth status on successful login', () => {
+        it('should extract token expiry from JWT and update auth status on successful login', () => {
             // Arrange
             const navigateSpy = spyOn(router, 'navigate');
+            // Create a mock JWT token with 30-day expiry
+            const mockJwtPayload = {
+                exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
+                'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier': 'test-user-id'
+            };
+            const mockJwtToken = 'header.' + btoa(JSON.stringify(mockJwtPayload)) + '.signature';
+            const mockResponseWithJwt = { token: mockJwtToken };
 
             // Act
             service.login(mockCredentials).subscribe({
                 next: (response) => {
-                    expect(response).toEqual(mockResponse);
-                    expect(localStorage.getItem('auth_token')).toBe(mockResponse.token);
-                    expect(localStorage.getItem('auth_token_expiry')).toBeTruthy();
+                    expect(response).toEqual(mockResponseWithJwt);
+                    // With cookie-based auth, tokens are not stored in localStorage
+                    expect(localStorage.getItem('auth_token')).toBeNull();
+                    expect(localStorage.getItem('auth_token_expiry')).toBeNull();
                 }
             });
 
@@ -106,8 +114,9 @@ describe('AuthService', () => {
             const req = httpMock.expectOne('/api/v1/auth/login');
             expect(req.request.method).toBe('POST');
             expect(req.request.body).toEqual(mockCredentials);
+            expect(req.request.withCredentials).toBe(true); // Should include cookies
 
-            req.flush(mockResponse);
+            req.flush(mockResponseWithJwt);
         });
 
         it('should handle login error correctly', () => {
@@ -121,23 +130,22 @@ describe('AuthService', () => {
 
             // Assert
             const req = httpMock.expectOne('/api/v1/auth/login');
+            expect(req.request.withCredentials).toBe(true); // Should include cookies
             req.flush('Invalid credentials', { status: 401, statusText: 'Unauthorized' });
         });
     });
 
     describe('logout', () => {
-        it('should clear storage and navigate to login', () => {
+        it('should clear auth state and navigate to login', () => {
             // Arrange
             const navigateSpy = spyOn(router, 'navigate');
-            localStorage.setItem('auth_token', 'test-token');
-            localStorage.setItem('auth_token_expiry', '123456');
-
+            
             // Act
             service.logout();
 
             // Assert
-            expect(localStorage.getItem('auth_token')).toBeNull();
-            expect(localStorage.getItem('auth_token_expiry')).toBeNull();
+            // With cookie-based auth, no localStorage clearing is needed
+            // Cookies are cleared by backend endpoints
             expect(navigateSpy).toHaveBeenCalledWith(['/login']);
         });
     });

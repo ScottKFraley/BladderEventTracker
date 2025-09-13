@@ -104,7 +104,7 @@ describe('LoginComponent', () => {
       expect(component.errorMessage).toBe('');
     });
 
-    it('should handle login error correctly', () => {
+    it('should handle string error correctly', () => {
       // Arrange
       authService.login.and.returnValue(throwError(() => 'Invalid credentials'));
       component.loginForm.setValue({
@@ -117,6 +117,56 @@ describe('LoginComponent', () => {
 
       // Assert
       expect(component.errorMessage).toBe('Invalid credentials');
+      expect(component.isLoading).toBeFalse();
+    });
+
+    it('should handle object error with message correctly', () => {
+      // Arrange
+      const errorObj = { message: 'Authentication failed' };
+      authService.login.and.returnValue(throwError(() => errorObj));
+      component.loginForm.setValue({
+        username: 'testuser',
+        password: 'wrongpass'
+      });
+
+      // Act
+      component.onSubmit();
+
+      // Assert
+      expect(component.errorMessage).toBe('Authentication failed');
+      expect(component.isLoading).toBeFalse();
+    });
+
+    it('should handle nested error object correctly', () => {
+      // Arrange
+      const errorObj = { error: { message: 'Server validation error' } };
+      authService.login.and.returnValue(throwError(() => errorObj));
+      component.loginForm.setValue({
+        username: 'testuser',
+        password: 'wrongpass'
+      });
+
+      // Act
+      component.onSubmit();
+
+      // Assert
+      expect(component.errorMessage).toBe('Server validation error');
+      expect(component.isLoading).toBeFalse();
+    });
+
+    it('should handle undefined error with fallback message', () => {
+      // Arrange
+      authService.login.and.returnValue(throwError(() => null));
+      component.loginForm.setValue({
+        username: 'testuser',
+        password: 'wrongpass'
+      });
+
+      // Act
+      component.onSubmit();
+
+      // Assert
+      expect(component.errorMessage).toBe('Login failed. Please try again.');
       expect(component.isLoading).toBeFalse();
     });
 
