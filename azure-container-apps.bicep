@@ -95,24 +95,24 @@ resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   }
 }
 
-// Create SQL Database
+// Create SQL Database - FREE TIER VERSION
 resource sqlDatabase 'Microsoft.Sql/servers/databases@2024-05-01-preview' = {
   parent: sqlServer
-  name: 'BETrackingDb'
+  name: 'BETrackingDb-free'
   location: location
   sku: {
-    name: 'GP_S_Gen5_2' // The _2 is for 2 vCore capacity
+    name: 'GP_S_Gen5'  // Serverless General Purpose (no capacity number = free tier)
     tier: 'GeneralPurpose'
     family: 'Gen5'
-    capacity: 2
+    capacity: 1  // 1 vCore minimum for free tier
   }
   properties: {
     collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: 34359738368 // 32GB
-    autoPauseDelay: 360
-    minCapacity: json('0.5')
-    useFreeLimit: true
-    freeLimitExhaustionBehavior: 'BillOverUsage'
+    maxSizeBytes: 34359738368  // 32GB (free tier limit)
+    autoPauseDelay: 60         // Must be THIS default value (60 min)
+    minCapacity: json('0.5')   // Minimum 0.5 vCore
+    useFreeLimit: true         // 🚨 CRITICAL: Enable free tier
+    freeLimitExhaustionBehavior: 'AutoPause'  // 🚨 CRITICAL: Auto-pause when free limit reached
     requestedBackupStorageRedundancy: 'Local'
   }
 }
@@ -155,7 +155,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = {
       secrets: [
         {
             name: 'sql-connection-string'
-            value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=BETrackingDb;User ID=sqladmin;Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=60;Command Timeout=120;ConnectRetryCount=3;ConnectRetryInterval=10;MultipleActiveResultSets=false;'
+            value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=BETrackingDb-free;User ID=sqladmin;Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=60;Command Timeout=120;ConnectRetryCount=3;ConnectRetryInterval=10;MultipleActiveResultSets=false;'
         }
         {
           name: 'sql-password'
