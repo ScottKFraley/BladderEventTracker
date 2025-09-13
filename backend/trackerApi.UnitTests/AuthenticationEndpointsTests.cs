@@ -45,7 +45,7 @@ public class AuthenticationEndpointsTests
     }
 
     [Fact, Trait("Category", "Unit")]
-    public async Task Login_WithValidCredentials_ReturnsOkWithToken()
+    public async Task Login_WithValidCredentials_ReturnsOkWithTokenAndSetsCookies()
     {
         // Arrange
         var hashedPassword = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("password123")));
@@ -65,11 +65,16 @@ public class AuthenticationEndpointsTests
         mockTokenService
             .Setup(ts => ts.GenerateToken(It.IsAny<User>(), null, false))
             .ReturnsAsync("test-jwt-token");
+        mockTokenService
+            .Setup(ts => ts.GenerateRefreshTokenAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+            .ReturnsAsync("test-refresh-token");
 
         var loginDto = new LoginDto("testuser", "password123");
+        var httpContext = new DefaultHttpContext();
 
         // Act
-        var result = await LoginHandler(
+        var result = await LoginHandlerWithContext(
+              httpContext,
               mockContext.Object,
               mockConfig.Object,
               mockTokenService.Object,
@@ -86,6 +91,24 @@ public class AuthenticationEndpointsTests
         var token = value?.GetType().GetProperty("Token")?.GetValue(value) as string;
 
         Assert.Equal("test-jwt-token", token);
+
+        // Verify cookies were set
+        Assert.True(httpContext.Response.Headers.ContainsKey("Set-Cookie"));
+        var setCookieHeaders = httpContext.Response.Headers["Set-Cookie"];
+        
+        // Check that we have both cookies
+        Assert.Equal(2, setCookieHeaders.Count);
+        
+        var accessTokenCookie = setCookieHeaders.FirstOrDefault(h => h.StartsWith("accessToken="));
+        var refreshTokenCookie = setCookieHeaders.FirstOrDefault(h => h.StartsWith("refreshToken="));
+        
+        Assert.NotNull(accessTokenCookie);
+        Assert.NotNull(refreshTokenCookie);
+        Assert.Contains("test-jwt-token", accessTokenCookie);
+        Assert.Contains("test-refresh-token", refreshTokenCookie);
+        Assert.Contains("httponly", accessTokenCookie.ToLower());
+        Assert.Contains("secure", accessTokenCookie.ToLower());
+        Assert.Contains("samesite=strict", accessTokenCookie.ToLower());
     }
 
 
@@ -150,6 +173,48 @@ public class AuthenticationEndpointsTests
         }
 
         var token = await tokenService.GenerateToken(user: user);
+
+        return Results.Ok(new { Token = token });
+    }
+
+    // Helper method to replicate the login endpoint handler logic with HttpContext for cookie testing
+    private static async Task<IResult> LoginHandlerWithContext(
+        HttpContext httpContext,
+        AppDbContext context,
+        IConfiguration config,
+        ITokenService tokenService,
+        LoginDto loginDto)
+    {
+        var user = await context.Set<User>()
+            .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
+
+        if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+        {
+            return Results.Unauthorized();
+        }
+
+        var token = await tokenService.GenerateToken(user: user);
+        var refreshToken = await tokenService.GenerateRefreshTokenAsync(user.Id, "test-user-agent");
+
+        // Set refresh token as httpOnly cookie
+        var refreshCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.Now.AddDays(30)
+        };
+        httpContext.Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
+
+        // Set access token as httpOnly cookie (30 days to match JWT)
+        var accessCookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTimeOffset.Now.AddDays(30)
+        };
+        httpContext.Response.Cookies.Append("accessToken", token, accessCookieOptions);
 
         return Results.Ok(new { Token = token });
     }

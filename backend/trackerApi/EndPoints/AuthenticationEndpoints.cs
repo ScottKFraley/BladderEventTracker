@@ -27,6 +27,7 @@ public static class AuthenticationEndpoints
             TelemetryClient telemetryClient) =>
             {
                 var stopwatch = Stopwatch.StartNew();
+
                 var loginEvent = new EventTelemetry("UserLogin");
                 loginEvent.Properties["Username"] = loginDto.Username;
                 loginEvent.Properties["UserAgent"] = httpContext.Request.Headers.UserAgent.ToString();
@@ -42,10 +43,12 @@ public static class AuthenticationEndpoints
                     if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
                     {
                         stopwatch.Stop();
+
                         var failureReason = user == null ? "UserNotFound" : "InvalidPassword";
                         loginEvent.Properties["Success"] = "false";
                         loginEvent.Properties["FailureReason"] = failureReason;
                         loginEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+
                         telemetryClient.TrackEvent(loginEvent);
                         
                         logger.LogInformation("Password verification result: Failed for user {Username}", loginDto.Username);
@@ -60,8 +63,8 @@ public static class AuthenticationEndpoints
                             Message = "Invalid username or password",
                             StatusCode = 401,
                             CorrelationId = correlationId,
-                            Timestamp = DateTime.UtcNow,
-                            SuggestedAction = "Please check your username and password and try again"
+                            Timestamp = DateTime.Now,
+                            SuggestedAction = "Please check your username and password and try again."
                         };
                         
                         return Results.Json(errorResponse, statusCode: StatusCodes.Status401Unauthorized);
@@ -84,14 +87,24 @@ public static class AuthenticationEndpoints
                     refreshTokenStopwatch.Stop();
 
                     // Set refresh token as httpOnly cookie
-                    var cookieOptions = new CookieOptions
+                    var refreshCookieOptions = new CookieOptions
                     {
                         HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.Strict,
-                        Expires = DateTimeOffset.UtcNow.AddDays(30) // 30 day expiry
+                        Expires = DateTimeOffset.Now.AddDays(30) // 30 day expiry
                     };
-                    httpContext.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+                    httpContext.Response.Cookies.Append("refreshToken", refreshToken, refreshCookieOptions);
+
+                    // Set access token as httpOnly cookie (30 days to match JWT)
+                    var accessCookieOptions = new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.Now.AddDays(30) // Match JWT expiration
+                    };
+                    httpContext.Response.Cookies.Append("accessToken", token, accessCookieOptions);
 
                     stopwatch.Stop();
                     loginEvent.Properties["Success"] = "true";
@@ -128,12 +141,12 @@ public static class AuthenticationEndpoints
                     var errorResponse = new ErrorResponse
                     {
                         Error = "INTERNAL_SERVER_ERROR",
-                        Message = "An error occurred during login",
+                        Message = "An error occurred during login.",
                         Details = ex.Message,
                         StatusCode = 500,
                         CorrelationId = correlationId,
-                        Timestamp = DateTime.UtcNow,
-                        SuggestedAction = "Please try again later or contact support if the issue persists"
+                        Timestamp = DateTime.Now,
+                        SuggestedAction = "Please try again later or contact support if the issue persists."
                     };
                     
                     return Results.Json(errorResponse, statusCode: StatusCodes.Status500InternalServerError);
@@ -191,7 +204,7 @@ public static class AuthenticationEndpoints
                     Message = "User authentication required",
                     StatusCode = 401,
                     CorrelationId = correlationId,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = DateTime.Now,
                     SuggestedAction = "Please login to obtain an access token"
                 };
                 
@@ -203,6 +216,7 @@ public static class AuthenticationEndpoints
             stopwatch.Stop();
             tokenEvent.Properties["Success"] = "true";
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+
             telemetryClient?.TrackEvent(tokenEvent);
             
             telemetryClient?.TrackMetric("Authentication.TokenGeneration.Success", 1,
@@ -217,21 +231,22 @@ public static class AuthenticationEndpoints
             tokenEvent.Properties["FailureReason"] = "Exception";
             tokenEvent.Properties["ExceptionMessage"] = ex.Message;
             tokenEvent.Metrics["Duration"] = stopwatch.ElapsedMilliseconds;
+            
             telemetryClient?.TrackEvent(tokenEvent);
             telemetryClient?.TrackException(ex);
             
             var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
                 ?? Guid.NewGuid().ToString();
-                
+            
             var errorResponse = new ErrorResponse
             {
                 Error = "TOKEN_GENERATION_ERROR",
-                Message = "Failed to generate authentication token",
+                Message = "Failed to generate authentication token.",
                 Details = ex.Message,
                 StatusCode = 500,
                 CorrelationId = correlationId,
-                Timestamp = DateTime.UtcNow,
-                SuggestedAction = "Please try again or contact support if the issue persists"
+                Timestamp = DateTime.Now,
+                SuggestedAction = "Please try again or contact support if the issue persists."
             };
             
             return Results.Json(errorResponse, statusCode: StatusCodes.Status500InternalServerError);
@@ -247,6 +262,7 @@ public static class AuthenticationEndpoints
     private static bool VerifyPassword(string password, string storedHash)
     {
         var inputHash = HashPassword(password);
+        
         return string.Equals(inputHash, storedHash, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -259,6 +275,7 @@ public static class AuthenticationEndpoints
     {
         var passwordBytes = System.Text.Encoding.UTF8.GetBytes(password);
         var hashBytes = SHA256.HashData(passwordBytes);
+        
         return Convert.ToHexString(hashBytes);
     }
 }
