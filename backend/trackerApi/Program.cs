@@ -37,27 +37,6 @@ try
         Log.Information("Configuration provider: {ProviderType}", provider.GetType().Name);
     }
 
-    //// Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
-    //var isRunningInContainer = bool.TryParse(
-    //    Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
-    //    out bool inContainer) && inContainer;
-
-    //// Determine environment based on container status and debugger
-    //if (isRunningInContainer)
-    //{
-    //    // Running in Docker container - use Development config (with Docker connection string)
-    //    builder.Environment.EnvironmentName = "Development";
-    //    Log.Information("Running in Docker container - setting environment to: {Environment}",
-    //        builder.Environment.EnvironmentName);
-    //}
-    //else
-    //{
-    //    // Running locally (in debugger or directly) - use DevVS config
-    //    builder.Environment.EnvironmentName = "DevVS";
-    //    Log.Information("Running locally - setting environment to: {Environment}",
-    //        builder.Environment.EnvironmentName);
-    //}
-
     // Check if running in container (DOTNET_RUNNING_IN_CONTAINER is automatically set by the base image.)
     var isRunningInContainer = bool.TryParse(
         Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
