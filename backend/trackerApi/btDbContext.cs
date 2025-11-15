@@ -47,9 +47,9 @@ public class AppDbContext : DbContext
                 ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "PainLevel >= 0 AND PainLevel <= 10");
             });
 
-            // Configure Id as uniqueidentifier with default value
+            // Configure Id as UUID with default value
             entity.Property(e => e.Id)
-                .HasDefaultValueSql("NEWID()");
+                .HasDefaultValueSql("gen_random_uuid()");
 
             // Configure foreign key relationship
             entity.HasOne(t => t.User)
@@ -59,9 +59,9 @@ public class AppDbContext : DbContext
 
             // Configure EventDate with default
             entity.Property(e => e.EventDate)
-                .HasDefaultValueSql("GETDATE()");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            // For SQL Server, we don't need to specify column type as it will use datetime2
+            // For PostgreSQL, timestamp without time zone is the default for DateTime
 
             // Configure boolean defaults
             entity.Property(e => e.Accident)
@@ -82,9 +82,9 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Users");
 
-            // Configure Id as uniqueidentifier with default value
+            // Configure Id as UUID with default value
             entity.Property(e => e.Id)
-                .HasDefaultValueSql("NEWID()");
+                .HasDefaultValueSql("gen_random_uuid()");
 
             // Configure Username
             entity.Property(e => e.Username)
@@ -96,16 +96,15 @@ public class AppDbContext : DbContext
                 .HasDatabaseName("IX_Users_Username")
                 .IsUnique();
 
-            // Configure PasswordHash
+            // Configure PasswordHash (text type for PostgreSQL)
             entity.Property(e => e.PasswordHash)
-                .HasColumnType("nvarchar(max)")
                 .IsRequired();
 
             // Configure default values for timestamps
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("GETDATE()");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("GETDATE()")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .ValueGeneratedOnUpdate(); // Update on row modification
 
             // for IsAdmin
@@ -118,9 +117,9 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("RefreshTokens");
 
-            // Configure Id as uniqueidentifier with default value
+            // Configure Id as UUID with default value
             entity.Property(e => e.Id)
-                .HasDefaultValueSql("NEWID()");
+                .HasDefaultValueSql("gen_random_uuid()");
 
             // Configure Token
             entity.Property(e => e.Token)
@@ -135,7 +134,7 @@ public class AppDbContext : DbContext
 
             // Configure default values for timestamps
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             // Configure IsRevoked default
             entity.Property(e => e.IsRevoked)
@@ -158,7 +157,7 @@ public class AppDbContext : DbContext
             // Composite index for the most common refresh token query
             entity.HasIndex(e => new { e.Token, e.IsRevoked })
                 .HasDatabaseName("IX_RefreshTokens_Token_IsRevoked")
-                .HasFilter("IsRevoked = 0"); // Filtered index for active tokens only
+                .HasFilter("\"IsRevoked\" = false"); // Filtered index for active tokens only (PostgreSQL syntax)
         });
     }
 
@@ -245,12 +244,12 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
+        optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
         {
-            sqlOptions.EnableRetryOnFailure(
+            npgsqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(60),
-                errorNumbersToAdd: [258, 2, 53, 121, 232, 20]);
+                errorCodesToAdd: null);
         });
 
         // Create a default logger if _logger is null

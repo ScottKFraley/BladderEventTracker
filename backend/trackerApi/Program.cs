@@ -210,7 +210,7 @@ try
         builder.Configuration.AddUserSecrets<Program>();
     }
 
-    // Get the connection string for SQL Server
+    // Get the connection string for PostgreSQL
     var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     Log.Information("Raw connection string from config: {ConnectionString}",
         string.IsNullOrEmpty(rawConnectionString) ? "[EMPTY]" : "[HAS VALUE]");
@@ -229,15 +229,15 @@ try
             "Ensure DefaultConnection is set in appsettings.json.");
     }
 
-    // Register DbContext with SQL Server
+    // Register DbContext with PostgreSQL
     builder.Services.AddDbContextPool<AppDbContext>((serviceProvider, options) =>
     {
-        options.UseSqlServer(connectionString, sqlOptions =>
+        options.UseNpgsql(connectionString, npgsqlOptions =>
         {
-            sqlOptions.EnableRetryOnFailure(
+            npgsqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: [258, 2, 53, 121, 232, 20]);
+                errorCodesToAdd: null);
         });
 
         // Enable sensitive data logging for development environments only

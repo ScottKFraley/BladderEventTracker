@@ -68,7 +68,7 @@ public class DatabaseFixture : IAsyncLifetime
         _logger.LogInformation("Using database configuration from: {ConfigPath}", Directory.GetCurrentDirectory());
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);
 
         Context = new AppDbContext(optionsBuilder.Options, _logger);
     }
@@ -101,9 +101,9 @@ public class DatabaseFixture : IAsyncLifetime
 
     private async Task CleanupTestDataAsync()
     {
-        // Use SQL Server syntax instead of PostgreSQL
-        await Context.Database.ExecuteSqlRawAsync("DELETE FROM TrackingLog");
-        await Context.Database.ExecuteSqlRawAsync("DELETE FROM Users WHERE Username = 'testuser'");
+        // Use PostgreSQL syntax
+        await Context.Database.ExecuteSqlRawAsync("DELETE FROM \"TrackingLog\"");
+        await Context.Database.ExecuteSqlRawAsync("DELETE FROM \"Users\" WHERE \"Username\" = 'testuser'");
     }
 }
 

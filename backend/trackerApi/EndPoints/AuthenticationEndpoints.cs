@@ -104,7 +104,7 @@ public static class AuthenticationEndpoints
                         SameSite = SameSiteMode.Strict,
                         Expires = DateTimeOffset.Now.AddDays(30) // Match JWT expiration
                     };
-                    httpContext.Response.Cookies.Append("accessToken", token, accessCookieOptions);
+                    httpContext.Response.Cookies.Append("accessToken", token!, accessCookieOptions);
 
                     stopwatch.Stop();
                     loginEvent.Properties["Success"] = "true";
