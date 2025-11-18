@@ -1,12 +1,15 @@
-namespace trackerApi.DbContext;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 using trackerApi.Models;
 using trackerApi.Services;
 
-public class AppDbContext : DbContext
+using DotEnv = dotenv.net.DotEnv;
+using DotEnvOptions = dotenv.net.DotEnvOptions;
+
+namespace trackerApi.DbContext;
+
+public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
 {
     private readonly ILogger<AppDbContext> _logger;
 
@@ -41,10 +44,11 @@ public class AppDbContext : DbContext
         // TrackingLog table
         modelBuilder.Entity<TrackingLogItem>(entity =>
         {
-            entity.ToTable("TrackingLog", ck => {
-                ck.HasCheckConstraint("CK_TrackingLog_LeakAmount", "LeakAmount >= 0 AND LeakAmount <= 3");
-                ck.HasCheckConstraint("CK_TrackingLog_Urgency", "Urgency >= 0 AND Urgency <= 4");
-                ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "PainLevel >= 0 AND PainLevel <= 10");
+            entity.ToTable("TrackingLog", ck =>
+            {
+                ck.HasCheckConstraint("CK_TrackingLog_LeakAmount", "leakamount >= 0 AND leakamount <= 3");
+                ck.HasCheckConstraint("CK_TrackingLog_Urgency", "urgency >= 0 AND urgency <= 4");
+                ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "painlevel >= 0 AND painlevel <= 10");
             });
 
             // Configure Id as UUID with default value
@@ -225,11 +229,32 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 
     public AppDbContext CreateDbContext(string[] args)
     {
+        // Load .env file for environment variables (needed for integration tests and local dev)
+        var currentDirectory = Directory.GetCurrentDirectory();
+        var envPath = Path.Combine(currentDirectory, ".env");
+
+        // Try current directory first, then parent directories (for test projects)
+        if (!File.Exists(envPath))
+        {
+            var solutionDirectory = Directory.GetParent(currentDirectory)?.Parent?.Parent?.Parent?.FullName;
+            if (solutionDirectory != null)
+            {
+                envPath = Path.Combine(solutionDirectory, "trackerApi", ".env");
+            }
+        }
+
+        // Load .env if it exists (optional for production scenarios)
+        if (File.Exists(envPath))
+        {
+            DotEnv.Load(new DotEnvOptions(envFilePaths: [envPath]));
+        }
+
         IConfiguration configuration = _configuration ?? new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)
             .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
             .AddUserSecrets<AppDbContextFactory>()
+            .AddEnvironmentVariables() // Pick up environment variables including those from .env
             .Build();
 
         var connectionString = ConnectionStringHelper.ProcessConnectionString(

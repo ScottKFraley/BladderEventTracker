@@ -62,8 +62,16 @@ public class DatabaseFixture : IAsyncLifetime
         }
 
         _logger.LogInformation("Connection string template: {ConnectionString}", connectionString);
-        
+
         connectionString = connectionString!.Replace("${DbPassword}", dbPassword);
+
+
+        var loadedPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+        Console.WriteLine($"DEBUG: .env file path: {envPath}");
+        Console.WriteLine($"DEBUG: .env file exists: {File.Exists(envPath)}");
+        Console.WriteLine($"DEBUG: DB_PASSWORD loaded: {loadedPassword}");
+        Console.WriteLine($"DEBUG: DB_PASSWORD is null or empty: {string.IsNullOrEmpty(loadedPassword)}");
+
 
         _logger.LogInformation("Using database configuration from: {ConfigPath}", Directory.GetCurrentDirectory());
 
