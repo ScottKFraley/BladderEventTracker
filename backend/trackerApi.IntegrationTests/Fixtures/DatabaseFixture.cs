@@ -65,6 +65,7 @@ public class DatabaseFixture : IAsyncLifetime
 
         connectionString = connectionString!.Replace("${DbPassword}", dbPassword);
 
+        _logger.LogInformation("Connection string AFTER replacement: {ConnectionString}", connectionString);
 
         var loadedPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
         Console.WriteLine($"DEBUG: .env file path: {envPath}");

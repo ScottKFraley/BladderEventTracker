@@ -41,6 +41,19 @@ public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Find all DateTime properties and set them to timestamp without time zone
+        // because I do NOT want to deal with time zones in this app.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                {
+                    property.SetColumnType("timestamp without time zone");
+                }
+            }
+        }
+
         // TrackingLog table
         modelBuilder.Entity<TrackingLogItem>(entity =>
         {
@@ -233,20 +246,19 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var currentDirectory = Directory.GetCurrentDirectory();
         var envPath = Path.Combine(currentDirectory, ".env");
 
-        // Try current directory first, then parent directories (for test projects)
-        if (!File.Exists(envPath))
-        {
-            var solutionDirectory = Directory.GetParent(currentDirectory)?.Parent?.Parent?.Parent?.FullName;
-            if (solutionDirectory != null)
-            {
-                envPath = Path.Combine(solutionDirectory, "trackerApi", ".env");
-            }
-        }
-
-        // Load .env if it exists (optional for production scenarios)
+        // Load .env if it exists
         if (File.Exists(envPath))
         {
+            Console.WriteLine($"DEBUG: Loading .env from: {envPath}");
             DotEnv.Load(new DotEnvOptions(envFilePaths: [envPath]));
+
+            // Verify it was loaded
+            var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+            Console.WriteLine($"DEBUG: DB_PASSWORD after load: {(string.IsNullOrEmpty(dbPassword) ? "NOT FOUND" : "FOUND")}");
+        }
+        else
+        {
+            Console.WriteLine($"DEBUG: .env NOT FOUND at: {envPath}");
         }
 
         IConfiguration configuration = _configuration ?? new ConfigurationBuilder()

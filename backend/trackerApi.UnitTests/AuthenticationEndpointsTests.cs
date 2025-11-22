@@ -98,10 +98,10 @@ public class AuthenticationEndpointsTests
         
         // Check that we have both cookies
         Assert.Equal(2, setCookieHeaders.Count);
-        
-        var accessTokenCookie = setCookieHeaders.FirstOrDefault(h => h.StartsWith("accessToken="));
-        var refreshTokenCookie = setCookieHeaders.FirstOrDefault(h => h.StartsWith("refreshToken="));
-        
+
+        var accessTokenCookie = setCookieHeaders.FirstOrDefault(h => h?.StartsWith("accessToken=") == true);
+        var refreshTokenCookie = setCookieHeaders.FirstOrDefault(h => h?.StartsWith("refreshToken=") == true);
+
         Assert.NotNull(accessTokenCookie);
         Assert.NotNull(refreshTokenCookie);
         Assert.Contains("test-jwt-token", accessTokenCookie);

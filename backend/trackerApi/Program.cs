@@ -29,6 +29,10 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     Log.Information("Starting web application");
+
+    // Enable legacy timestamp behavior for Npgsql to avoid issues with DateTime handling
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
     var builder = WebApplication.CreateBuilder(args);
 
     // Added to see what configuration sources are available
