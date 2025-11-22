@@ -68,9 +68,9 @@ namespace trackerApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TrackingLog", x => x.Id);
-                    table.CheckConstraint("CK_TrackingLog_LeakAmount", "leakamount >= 0 AND leakamount <= 3");
-                    table.CheckConstraint("CK_TrackingLog_PainLevel", "painlevel >= 0 AND painlevel <= 10");
-                    table.CheckConstraint("CK_TrackingLog_Urgency", "urgency >= 0 AND urgency <= 4");
+                    table.CheckConstraint("CK_TrackingLog_LeakAmount", "\"LeakAmount\" >= 0 AND \"LeakAmount\" <= 3");
+                    table.CheckConstraint("CK_TrackingLog_PainLevel", "\"PainLevel\" >= 0 AND \"PainLevel\" <= 10");
+                    table.CheckConstraint("CK_TrackingLog_Urgency", "\"Urgency\" >= 0 AND \"Urgency\" <= 4");
                     table.ForeignKey(
                         name: "FK_TrackingLog_Users_UserId",
                         column: x => x.UserId,
