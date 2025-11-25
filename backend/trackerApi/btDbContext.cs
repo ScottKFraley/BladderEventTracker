@@ -246,17 +246,23 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         // Load .env file for environment variables (needed for integration tests and local dev)
         var currentDirectory = Directory.GetCurrentDirectory();
+        Console.WriteLine($"FACTORY: Current directory: {currentDirectory}");
+
         var envPath = Path.Combine(currentDirectory, ".env");
+        Console.WriteLine($"FACTORY: Looking for .env at: {envPath}");
+        Console.WriteLine($"FACTORY: .env exists: {File.Exists(envPath)}");
 
         // Load .env if it exists
         if (File.Exists(envPath))
         {
-            _logger?.LogDebug("DEBUG: Loading .env from: ", [envPath]);
+            _logger?.LogInformation("DEBUG: Loading .env from: ", [envPath]);
 
+            Console.WriteLine($"FACTORY: Loading .env from: {envPath}");
             DotEnv.Load(new DotEnvOptions(envFilePaths: [envPath]));
 
             // Verify it was loaded
             var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+            Console.WriteLine($"FACTORY: DB_PASSWORD = {(string.IsNullOrEmpty(dbPassword) ? "NOT FOUND" : "FOUND")}");
 
             var foundString = string.IsNullOrEmpty(dbPassword) ? "NOT FOUND" : "FOUND";
             _logger?.LogDebug("DB_PASSWORD after load: ", [foundString]);
@@ -274,9 +280,16 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             .AddEnvironmentVariables() // Pick up environment variables including those from .env
             .Build();
 
+
+        var rawConnectionString = configuration.GetConnectionString("DefaultConnection");
+        Console.WriteLine($"FACTORY: Raw connection string from config: {rawConnectionString}");
+
+
         var connectionString = ConnectionStringHelper.ProcessConnectionString(
             configuration.GetConnectionString("DefaultConnection")!,
             configuration);
+
+        Console.WriteLine($"FACTORY: Final connection string: {connectionString}");
 
         if (string.IsNullOrEmpty(connectionString))
         {

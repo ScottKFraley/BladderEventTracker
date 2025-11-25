@@ -66,9 +66,21 @@ public static class ConnectionStringHelper
     /// </summary>
     private static string? ResolveEnvironmentVariable(string variableName, IConfiguration configuration)
     {
+        Console.WriteLine($"RESOLVE: Looking for variable: {variableName}");
+
         // Try exact name first
         var value = configuration[variableName] ??
                    Environment.GetEnvironmentVariable(variableName);
+
+        Console.WriteLine($"RESOLVE: configuration[{variableName}] = {value ?? "null"}");
+
+        if (string.IsNullOrEmpty(value))
+        {
+            value = Environment.GetEnvironmentVariable(variableName);
+            Console.WriteLine($"RESOLVE: Environment.GetEnvironmentVariable({variableName}) = {value ?? "null"}");
+        }
+
+        Console.WriteLine($"RESOLVE: Environment.GetEnvironmentVariable({variableName}) = {value ?? "null"}");
 
         if (!string.IsNullOrEmpty(value))
         {
