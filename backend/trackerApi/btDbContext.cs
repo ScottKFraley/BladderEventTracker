@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
+using System.Diagnostics;
+
 using trackerApi.Models;
 using trackerApi.Services;
 
@@ -249,16 +251,19 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         // Load .env if it exists
         if (File.Exists(envPath))
         {
-            Console.WriteLine($"DEBUG: Loading .env from: {envPath}");
+            _logger?.LogDebug("DEBUG: Loading .env from: ", [envPath]);
+
             DotEnv.Load(new DotEnvOptions(envFilePaths: [envPath]));
 
             // Verify it was loaded
             var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-            Console.WriteLine($"DEBUG: DB_PASSWORD after load: {(string.IsNullOrEmpty(dbPassword) ? "NOT FOUND" : "FOUND")}");
+
+            var foundString = string.IsNullOrEmpty(dbPassword) ? "NOT FOUND" : "FOUND";
+            _logger?.LogDebug("DB_PASSWORD after load: ", [foundString]);
         }
         else
         {
-            Console.WriteLine($"DEBUG: .env NOT FOUND at: {envPath}");
+            _logger?.LogDebug("DEBUG: .env NOT FOUND at: ", [envPath]);
         }
 
         IConfiguration configuration = _configuration ?? new ConfigurationBuilder()
