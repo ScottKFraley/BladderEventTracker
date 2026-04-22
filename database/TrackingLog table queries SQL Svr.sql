@@ -1,5 +1,3 @@
--- truncate table public."TrackingLog";
--- SELECT Count(*) FROM public."TrackingLog";
 
 -- To see the date range we're querying:
 SELECT 

@@ -25,7 +25,7 @@ def yesNo_to_bool(input_text):
     return 0
 
 
-def format_datetime(date_str, time_str):
+def format_datetime(date_str, time_str, row_num=None):
     """Format datetime for SQL Server compatibility"""
     try:
         # Parse the date (format: YYYY-MM-DD)
@@ -45,7 +45,7 @@ def format_datetime(date_str, time_str):
         return naive_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
     except Exception as e:
-        print(f"Error parsing date/time: {date_str} {time_str} - {str(e)}")
+        print(f"Error parsing date/time on CSV row {row_num}: {date_str} {time_str} - {str(e)}")
         return None
 
 
@@ -114,9 +114,11 @@ def start_parsing_datafile(input_file):
                     event_time = row["Event Time"]
 
                     # Format datetime
-                    formatted_datetime = format_datetime(event_date, event_time)
+                    formatted_datetime = format_datetime(event_date, event_time, row_num=i + 2)
                     if not formatted_datetime:
-                        # skip bad row(s)
+                        print(f"Skipping CSV row {i + 2} due to date/time parse error.")
+                        continue
+                    if formatted_datetime <= "2025-09-12 11:27:00":
                         continue
 
                     # Map other fields - now returns 1/0 for SQL Server bit fields

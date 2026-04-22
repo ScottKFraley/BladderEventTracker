@@ -43,59 +43,6 @@ public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Find all DateTime properties and set them to timestamp without time zone
-        // because I do NOT want to deal with time zones in this app.
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            foreach (var property in entityType.GetProperties())
-            {
-                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
-                {
-                    property.SetColumnType("timestamp without time zone");
-                }
-            }
-        }
-
-        // TrackingLog table
-        modelBuilder.Entity<TrackingLogItem>(entity =>
-        {
-            entity.ToTable("TrackingLog", ck =>
-            {
-                ck.HasCheckConstraint("CK_TrackingLog_LeakAmount", "leakamount >= 0 AND leakamount <= 3");
-                ck.HasCheckConstraint("CK_TrackingLog_Urgency", "urgency >= 0 AND urgency <= 4");
-                ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "painlevel >= 0 AND painlevel <= 10");
-            });
-
-            // Configure Id as UUID with default value
-            entity.Property(e => e.Id)
-                .HasDefaultValueSql("gen_random_uuid()");
-
-            // Configure foreign key relationship
-            entity.HasOne(t => t.User)
-                .WithMany(u => u.TrackingLogs)
-                .HasForeignKey(t => t.UserId)
-                .OnDelete(DeleteBehavior.Cascade);  // or DeleteBehavior.Restrict if you don't want automatic deletion
-
-            // Configure EventDate with default
-            entity.Property(e => e.EventDate)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            // For PostgreSQL, timestamp without time zone is the default for DateTime
-
-            // Configure boolean defaults
-            entity.Property(e => e.Accident)
-                .HasDefaultValue(false);
-
-            entity.Property(e => e.ChangePadOrUnderware)
-                .HasDefaultValue(false);
-
-            entity.Property(e => e.AwokeFromSleep)
-                .HasDefaultValue(false);
-
-            // Configure numeric fields - let database defaults handle default values
-            // Remove HasDefaultValue() to allow explicit 0 values to be saved
-        });
-
         // Users table
         modelBuilder.Entity<User>(entity =>
         {
@@ -129,6 +76,46 @@ public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
             // for IsAdmin
             entity.Property(e => e.IsAdmin)
                 .HasDefaultValue(false);  // Sets default value to false for new users
+        });
+
+        // TrackingLog table
+        modelBuilder.Entity<TrackingLogItem>(entity =>
+        {
+            entity.ToTable("TrackingLog", ck =>
+            {
+                ck.HasCheckConstraint("CK_TrackingLog_LeakAmount", "leakamount >= 0 AND leakamount <= 3");
+                ck.HasCheckConstraint("CK_TrackingLog_Urgency", "urgency >= 0 AND urgency <= 4");
+                ck.HasCheckConstraint("CK_TrackingLog_PainLevel", "painlevel >= 0 AND painlevel <= 10");
+            });
+
+            // Configure Id as UUID with default value
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            // Configure foreign key relationship
+            entity.HasOne(t => t.User)
+                .WithMany(u => u.TrackingLogs)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);  // or DeleteBehavior.Restrict if you don't want automatic deletion
+
+            // Configure EventDate with default
+            entity.Property(e => e.EventDate)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // For PostgreSQL, 'timestamp without time zone is the default for DateTime
+
+            // Configure boolean defaults
+            entity.Property(e => e.Accident)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.ChangePadOrUnderware)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.AwokeFromSleep)
+                .HasDefaultValue(false);
+
+            // Configure numeric fields - let database defaults handle default values
+            // Remove HasDefaultValue() to allow explicit 0 values to be saved
         });
 
         // RefreshTokens table
@@ -178,6 +165,21 @@ public class AppDbContext : Microsoft.EntityFrameworkCore.DbContext
                 .HasDatabaseName("IX_RefreshTokens_Token_IsRevoked")
                 .HasFilter("\"IsRevoked\" = false"); // Filtered index for active tokens only (PostgreSQL syntax)
         });
+
+        // Find all DateTime properties and set them to timestamp without time zone
+        // because I do NOT want to deal with time zones in this app.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            entityType.SetTableName(entityType.GetTableName()?.ToLower());
+
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                {
+                    property.SetColumnType("timestamp without time zone");
+                }
+            }
+        }
     }
 
     public override int SaveChanges()
